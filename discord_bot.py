@@ -13,7 +13,7 @@ from shared_utils import logger, print_header, COLORS
 
 init(autoreset=True)
 
-# ---Aqua Prime themed colors
+# Aqua Prime themed colors
 COLORS = {
     'header': Fore.WHITE + Back.BLUE,
     'info': Fore.BLACK + Back.CYAN,
