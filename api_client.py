@@ -8,8 +8,7 @@ from datetime import datetime
 from sqlalchemy import desc
 from colorama import init, Fore, Back, Style
 import random
-
-from database import session_scope, Conversation, ConversationMessage
+from openai import AsyncOpenAI
 
 # Initialize colorama
 init(autoreset=True)
@@ -137,6 +136,13 @@ async def scheduled_sync():
                     new_count += 1
 
                     messages = await fetch_conversation_transcript(conv['id'])
+                    summary = await summarize_transcript(messages)  # Summarize the transcript using OpenAI
+                    game_state = GameState(state_number=new_count, summary=summary)  # Store summary
+                    session.add(game_state)
+
+                    # Notify Discord channel
+                    await notify_discord_channel(summary)
+
                     for msg in messages:
                         new_msg = ConversationMessage(
                             conversation_id=conv['id'],
@@ -218,6 +224,27 @@ def get_relevant_summary(session, query):
     if relevant_conversation:
         return relevant_conversation.summary
     return None
+
+# Initialize OpenAI client
+client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
+
+async def summarize_transcript(transcript: List[Dict[str, Any]]) -> str:
+    # Prepare the prompt for summarization
+    messages = " ".join([msg['content'] for msg in transcript])
+    prompt = f"Please summarize the following conversation:\n\n{messages}"
+
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        summary = response.choices[0].message.content.strip()
+        return summary
+    except Exception as e:
+        logger.error(f"Error during summarization: {e}")
+        return "Error generating summary."
 
 if __name__ == "__main__":
     asyncio.run(start_scheduled_sync())
