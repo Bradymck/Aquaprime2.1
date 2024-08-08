@@ -33,6 +33,19 @@ Base = declarative_base()
 engine = create_engine('sqlite:///unified_chat_memory.db', poolclass=QueuePool, pool_size=10, max_overflow=20)
 SessionMaker = sessionmaker(bind=engine)
 
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
+    session = SessionMaker()
+    try:
+        yield session
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
 class Message(Base):
     __tablename__ = 'messages'
     id = Column(Integer, primary_key=True)
@@ -84,19 +97,6 @@ class ConversationMessage(Base):
     conversation = relationship("Conversation", back_populates="messages")
 
 Conversation.messages = relationship("ConversationMessage", order_by=ConversationMessage.timestamp, back_populates="conversation")
-
-@contextmanager
-def session_scope():
-    session = SessionMaker()
-    try:
-        yield session
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Database error: {str(e)}")
-        raise
-    finally:
-        session.close()
 
 def init_db():
     Base.metadata.create_all(engine)

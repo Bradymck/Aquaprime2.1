@@ -6,7 +6,7 @@ import asyncio
 from discord import Intents, app_commands
 from discord.ext import commands as discord_commands
 from colorama import init, Fore, Back, Style
-from database import session_scope, UserEngagement
+from database import session_scope, UserEngagement  # Import session_scope
 from utils import process_message_with_context, save_message, get_relevant_summary
 from api_client import fetch_recent_conversations
 from shared_utils import logger
