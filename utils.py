@@ -1,6 +1,8 @@
 import logging
+from datetime import datetime, timedelta
 from colorama import init, Fore, Back, Style
-
+import openai
+import os
 # Initialize colorama for cross-platform color support
 init(autoreset=True)
 
@@ -34,26 +36,29 @@ def log_warning(message):
 def log_error(message):
     logger.error(f"{COLORS['error']}{message}{COLORS['reset']}")
 
-
-# Example usage
-if __name__ == "__main__":
-    print_header("Aqua Prime Bot Initialization")
-    log_info("Bot is starting...")
-    log_success("Successfully connected to the database.")
-    log_warning("This is a warning message.")
-    log_error("This is an error message.")
-
-    prompt = (f"System Instructions: Handle the following user messages.\n"
-              f"User Sentiment: {user_sentiment}\n"
-              f"Platform: {platform}\n"
-              f"Recent Context: {ram_messages}\n"
-              f"User Message: {content}")
-
-    # Log the prompt here
+async def generate_response_with_openai(prompt):
     logger.info(f"Prompt being sent to OpenAI: {prompt}")
+    # Assuming the OpenAI API key is stored in an environment variable
+    openai.api_key = os.getenv("OPENAI_API_KEY")
 
-    ai_response = await generate_response_with_openai(prompt)
-    return ai_response
+    try:
+        response = await openai.Completion.create(
+            engine="davinci-codex",
+            prompt=prompt,
+            max_tokens=150
+        )
+        return response['choices'][0]['text'].strip()
+    except Exception as e:
+        log_error(f"Error generating response from OpenAI: {e}")
+        return "An error occurred while generating the response."
+
+async def process_message_with_context(prompt, user_id, platform, conversation_id):
+    logger.info(f"Processing message for user {user_id} on platform {platform}")
+    # Combine the prompt with user and conversation context
+    combined_prompt = f"User: {user_id}\nPlatform: {platform}\nConversation: {conversation_id}\n{prompt}"
+
+    response = await generate_response_with_openai(combined_prompt)
+    return response
 
 async def save_message(content, platform, user_id, username):
     sentiment = analyze_sentiment(content)
@@ -107,4 +112,9 @@ async def periodic_summarization(agent_id, api_key, user_id):
 
 async def summarize_transcripts(transcripts):
     # This function should be implemented to create summaries from the provided transcripts
-    # It should use the OpenAI API to generate summaries
+    pass
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(main())
