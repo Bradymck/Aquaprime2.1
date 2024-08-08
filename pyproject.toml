@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "python-template"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.10.0,<3.11"
+discord = "^2.3.2"
+discord-py = "^2.4.0"
+twitchio = "^2.10.0"
+requests = "^2.32.3"
+textblob = "^0.18.0.post0"
+aiohttp = "^3.10.0"
+backoff = "^2.2.1"
+websockets = "^12.0"
+openai = "^1.38.0"
+weaviate-client = "^4.7.1"
+pymongo = "^4.8.0"
+spacy = "^3.7.5"
+sqlalchemy = "^2.0.31"
+apscheduler = "^3.10.4"
+cachetools = "^5.4.0"
+python-dotenv = "^1.0.1"
+ratelimit = "^2.2.1"
+aiolimiter = "^1.1.0"
+pytz = "^2024.1"
+
+[tool.pyright]
+# https://github.com/microsoft/pyright/blob/main/docs/configuration.md
+useLibraryCodeForTypes = true
+
+[tool.ruff]
+# https://beta.ruff.rs/docs/configuration/
+select = ['E', 'W', 'F', 'I', 'B', 'C4', 'ARG', 'SIM']
+ignore = ['W291', 'W292', 'W293']
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
