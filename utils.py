@@ -108,5 +108,3 @@ async def periodic_summarization(agent_id, api_key, user_id):
 async def summarize_transcripts(transcripts):
     # This function should be implemented to create summaries from the provided transcripts
     # It should use the OpenAI API to generate summaries
-    pass
-
