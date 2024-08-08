@@ -113,9 +113,7 @@ async def fetch_conversation_transcript(conversation_id: str) -> Optional[List[D
 
 async def scheduled_sync():
     start_time = datetime.now()
-    print(f"\n{COLORS['header']}{'=' * 80}{COLORS['reset']}")
-    print(f"{COLORS['header']}{'Aqua Prime Sync Initiated':^80}{COLORS['reset']}")
-    print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
+    print_header("Aqua Prime Sync Initiated")
 
     conversations = await fetch_recent_conversations()
 
@@ -159,17 +157,11 @@ async def scheduled_sync():
     end_time = datetime.now()
     duration = (end_time - start_time).total_seconds()
 
-    print(f"\n{COLORS['header']}{'=' * 80}{COLORS['reset']}")
-    print(f"{COLORS['header']}{'Aqua Prime Sync Completed':^80}{COLORS['reset']}")
-    print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
-
-    print(f"{COLORS['info']}{'Sync Summary':^80}{COLORS['reset']}")
-    print(f"{COLORS['info']}{'🆕 New Conversations:':<40}{new_count:>40}{COLORS['reset']}")
-    print(f"{COLORS['info']}{'📊 Updated Conversations:':<40}{update_count:>40}{COLORS['reset']}")
-    print(f"{COLORS['info']}{'💬 Messages Added:':<40}{message_count:>40}{COLORS['reset']}")
-    print(f"{COLORS['info']}{'⏱️ Duration (seconds):':<40}{duration:>40.2f}{COLORS['reset']}")
-
-    print(f"\n{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
+    print_header("Aqua Prime Sync Completed")
+    log_info(f"🆕 New Conversations: {new_count}")
+    log_info(f"📊 Updated Conversations: {update_count}")
+    log_info(f"💬 Messages Added: {message_count}")
+    log_info(f"⏱️ Duration (seconds): {duration:.2f}")
 
 async def test_api_connection() -> bool:
     url = f"{PLAY_AI_API_URL}/agents/{AGENT_ID}/conversations"

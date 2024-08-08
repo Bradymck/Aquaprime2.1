@@ -4,7 +4,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import QueuePool
 from contextlib import contextmanager
 from datetime import datetime
-from colorama import init, Fore, Style
+from colorama import init, Fore, Back, Style
 import random
 import os
 
@@ -100,7 +100,7 @@ def session_scope():
 
 def init_db():
     Base.metadata.create_all(engine)
-    logger.info("Database initialized")
+    log_info("Database initialized")
 
 def get_latest_summary():
     # Implement logic to retrieve the most recent summary from the database
