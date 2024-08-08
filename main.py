@@ -14,7 +14,7 @@ from openai import AsyncOpenAI
 # Initialize colorama
 init(autoreset=True)
 
-# Aqua Prime themed emojis and symbols
+# Aqua Prime themed emojis and symbols 💧
 AQUA_EMOJIS = ["🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"]
 
 class AquaPrimeFormatter(logging.Formatter):
