@@ -1,8 +1,33 @@
+import logging
 from sqlalchemy import create_engine, Column, DateTime, Float, Integer, String, JSON, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import QueuePool
 from contextlib import contextmanager
 from datetime import datetime
+from colorama import init, Fore, Style
+import random
+import os
+
+# Initialize colorama
+init(autoreset=True)
+
+# Aqua Prime themed emojis and symbols
+AQUA_EMOJIS = ["🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"]
+
+class AquaPrimeFormatter(logging.Formatter):
+    def format(self, record):
+        aqua_colors = [Fore.CYAN, Fore.BLUE, Fore.GREEN]
+        color = random.choice(aqua_colors)
+        emoji = random.choice(AQUA_EMOJIS)
+
+        log_message = super().format(record)
+        return f"{color}{Style.BRIGHT}{emoji} {log_message}{Style.RESET_ALL}"
+
+logger = logging.getLogger('database')
+handler = logging.StreamHandler()
+handler.setFormatter(AquaPrimeFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 Base = declarative_base()
 engine = create_engine('sqlite:///unified_chat_memory.db', poolclass=QueuePool, pool_size=10, max_overflow=20)
@@ -68,12 +93,14 @@ def session_scope():
         session.commit()
     except Exception as e:
         session.rollback()
+        logger.error(f"Database error: {str(e)}")
         raise
     finally:
         session.close()
 
 def init_db():
     Base.metadata.create_all(engine)
+    logger.info("Database initialized")
 
 def get_latest_summary():
     # Implement logic to retrieve the most recent summary from the database
@@ -82,3 +109,7 @@ def get_latest_summary():
 def get_relevant_summary(query):
     # Implement logic to find a summary relevant to the given query
     pass
+
+print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
+logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Database Initialized{Style.RESET_ALL}")
+print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")

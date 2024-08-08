@@ -1,26 +1,54 @@
 import os
 import logging
 import discord
+import random
+import asyncio
 from discord import Intents, app_commands
 from discord.ext import commands as discord_commands
+from colorama import init, Fore, Back, Style
 from database import session_scope, UserEngagement
 from utils import process_message_with_context, save_message, get_relevant_summary
 from api_client import fetch_recent_conversations
+from shared_utils import logger, print_header, COLORS
+
+init(autoreset=True)
+
+# Aqua Prime themed colors
+COLORS = {
+    'header': Fore.WHITE + Back.BLUE,
+    'info': Fore.BLACK + Back.CYAN,
+    'success': Fore.BLACK + Back.GREEN,
+    'warning': Fore.BLACK + Back.YELLOW,
+    'error': Fore.WHITE + Back.RED,
+    'reset': Style.RESET_ALL
+}
+
+class AquaPrimeFormatter(logging.Formatter):
+    def format(self, record):
+        log_color = COLORS['info']
+        if record.levelno >= logging.ERROR:
+            log_color = COLORS['error']
+        elif record.levelno >= logging.WARNING:
+            log_color = COLORS['warning']
+
+        log_message = record.getMessage()  # Corrected method
+        return f"{log_color}{log_message:<80}{COLORS['reset']}"
 
 # Set up logging
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('discord_bot')
+handler = logging.StreamHandler()
+handler.setFormatter(AquaPrimeFormatter())
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
-# Load environment variables
-DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
-DISCORD_GUILD_ID = os.getenv('DISCORD_GUILD_ID')
+DISCORD_TOKEN = os.environ['DISCORD_TOKEN']
+DISCORD_GUILD_ID = os.environ['DISCORD_GUILD_ID']
 
 if not DISCORD_TOKEN:
-    raise ValueError("No DISCORD_TOKEN found. Please set it in the environment variables.")
+    raise ValueError("No DISCORD_TOKEN found.")
 if not DISCORD_GUILD_ID:
-    raise ValueError("No DISCORD_GUILD_ID found. Please set it in the environment variables.")
+    raise ValueError("No DISCORD_GUILD_ID found.")
 
-# Discord Bot Setup
 intents = Intents.default()
 intents.message_content = True
 discord_bot = discord_commands.Bot(command_prefix="!", intents=intents)
@@ -30,43 +58,34 @@ class DiscordBot(discord_commands.Cog):
         self.bot = bot
         self.conversations = {}
         self.test_guild_id = discord.Object(id=int(DISCORD_GUILD_ID))
-        logger.info("DiscordBot cog initialized")
+        logger.info("DiscordBot initialized")
 
-    @app_commands.command(name='chat', description='Chat with the AI and interact with the story')
+    @app_commands.command(name='chat', description='Chat with the AI')
     @discord_commands.cooldown(1, 5, discord_commands.BucketType.user)
     async def chat(self, interaction: discord.Interaction, message: str):
         user_id = str(interaction.user.id)
         conversation_id = self.conversations.get(user_id)
         if not conversation_id:
-            logger.info(f"No conversation ID found for user {user_id}, initializing new conversation.")
+            logger.info(f"No conversation ID for user {user_id}.")
             conversation_id = None
 
         try:
-            # Defer the response to allow more time for processing
-            await interaction.response.defer()
-
             relevant_summary = get_relevant_summary(user_id)
-            summary_context = f"Recent story summary: {relevant_summary.content}" if relevant_summary else "No recent story summary available."
+            summary_context = f"Summary: {relevant_summary.content}" if relevant_summary else "No summary available."
 
-            prompt = f"{summary_context}\n\nUser message: {message}\n\nPlease respond in the context of the ongoing story:"
-
-            # Log the prompt being sent to OpenAI
-            logger.info(f"Generated prompt for OpenAI: {prompt}")
+            prompt = f"{summary_context}\n\nUser: {message}\n\n"
 
             ai_response = await process_message_with_context(prompt, user_id, 'discord', conversation_id)
-
-            response = f"AI: {ai_response}\n\n"
+            response = f"AI: {ai_response}\n"
             if relevant_summary:
-                response += f"*Story context: {relevant_summary.content[:100]}...*"
+                response += f"Context: {relevant_summary[:100]}..."
 
-            await interaction.followup.send(response)
+            await interaction.response.send_message(response)
             await save_message(message, 'discord', user_id, interaction.user.name)
+            logger.info(f"Chat with user {user_id} successful")
         except Exception as e:
-            logger.error(f"Error in chat command: {e}")
-            try:
-                await interaction.followup.send("Sorry, an error occurred while processing your request.", ephemeral=True)
-            except Exception as followup_error:
-                logger.error(f"Failed to send follow-up error message: {followup_error}")
+            logger.error(f"Chat error for user {user_id}: {e}")
+            await interaction.response.send_message("Error.", ephemeral=True)
 
     @app_commands.command(name='reputation', description='Check your reputation')
     async def check_reputation(self, interaction: discord.Interaction):
@@ -75,86 +94,85 @@ class DiscordBot(discord_commands.Cog):
             with session_scope() as session:
                 user = session.query(UserEngagement).filter_by(user_id=user_id).first()
                 if user:
-                    await interaction.response.send_message(f"Your current reputation is: {user.reputation}")
+                    await interaction.response.send_message(f"Your reputation: {user.reputation}")
+                    logger.info(f"Reputation check for user {user_id}")
                 else:
-                    await interaction.response.send_message("You don't have any reputation yet.")
+                    await interaction.response.send_message("No reputation yet.")
         except Exception as e:
-            logger.error(f"Error in check_reputation command: {e}")
-            await interaction.response.send_message("Sorry, an error occurred while checking your reputation.", ephemeral=True)
+            logger.error(f"Reputation error for user {user_id}: {e}")
+            await interaction.response.send_message("Error.", ephemeral=True)
 
-    @app_commands.command(name='history', description='View your conversation history')
+    @app_commands.command(name='history', description='View your history')
     async def view_history(self, interaction: discord.Interaction):
         user_id = str(interaction.user.id)
         try:
             conversations = await fetch_recent_conversations()
             if conversations:
                 history = "\n".join([f"Conversation {i+1}: {conv['summary']}" for i, conv in enumerate(conversations[:5])])
-                await interaction.response.send_message(f"Your recent conversations:\n{history}")
+                await interaction.response.send_message(f"Your conversations:\n{history}")
+                logger.info(f"History for user {user_id}")
             else:
-                await interaction.response.send_message("No recent conversations found.")
+                await interaction.response.send_message("No conversations found.")
         except Exception as e:
-            logger.error(f"Error in view_history command: {e}")
-            await interaction.response.send_message("Sorry, an error occurred while fetching your history.", ephemeral=True)
+            logger.error(f"History error for user {user_id}: {e}")
+            await interaction.response.send_message("Error.", ephemeral=True)
+
+@discord_bot.event
+async def on_message(message):
+    if message.author == discord_bot.user:
+        return
+
+    logger.info(f"Message from {message.author.name}: {message.content[:50]}...")
+    await discord_bot.process_commands(message)
 
 @discord_bot.event
 async def on_ready():
     discord_cog = DiscordBot(discord_bot)
     await discord_bot.add_cog(discord_cog)
 
-    logger.info("Commands in the bot:")
-    for command in discord_bot.tree.walk_commands():
-        logger.info(f"- {command.name}")
+    print_header("Aqua Prime Discord Bot")
 
-    try:
-        logger.info(f"Attempting to sync guild-specific commands for guild {discord_cog.test_guild_id.id}")
-        guild_commands = [discord_cog.chat, discord_cog.check_reputation, discord_cog.view_history]
-        for cmd in guild_commands:
-            discord_bot.tree.add_command(cmd, guild=discord_cog.test_guild_id)
-        synced = await discord_bot.tree.sync(guild=discord_cog.test_guild_id)
-        logger.info(f'Synced {len(synced)} guild-specific commands to guild {discord_cog.test_guild_id.id}')
-        for command in synced:
-            logger.info(f"Synced guild-specific command: {command.name}")
-    except Exception as e:
-        logger.error(f'Failed to sync guild-specific commands: {e}')
+    commands = [command.name for command in discord_bot.tree.walk_commands()]
+    guild_commands = [cmd for cmd in commands if cmd in ['chat', 'reputation', 'history']]
+    global_commands = [cmd for cmd in commands if cmd not in guild_commands]
 
-    try:
-        logger.info("Attempting to sync global commands")
-        synced = await discord_bot.tree.sync()
-        logger.info(f'Synced {len(synced)} global commands')
-    except Exception as e:
-        logger.error(f'Failed to sync global commands: {e}')
+    logger.info(f"Logged in as {discord_bot.user}")
+    logger.info(f"Connected to {len(discord_bot.guilds)} guilds")
+    logger.info(f"Guild commands: {', '.join(guild_commands)}")
+    logger.info(f"Global commands: {', '.join(global_commands)}")
+    logger.info(f"Latency: {discord_bot.latency * 1000:.2f}ms")
 
-    logger.info(f'Discord Bot: Logged in as {discord_bot.user}')
-    logger.info(f'Discord Bot: In {len(discord_bot.guilds)} guilds')
+    print_header("Aqua Prime Discord Bot Ready")
 
 @discord_bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, discord_commands.errors.CommandNotFound):
-        await ctx.send("Command not found. Use !help to see available commands.")
+        await ctx.send("Command not found.")
     elif isinstance(error, discord_commands.errors.CommandOnCooldown):
-        await ctx.send(f"This command is on cooldown. Try again in {error.retry_after:.2f} seconds.")
+        await ctx.send(f"Cooldown. Try again in {error.retry_after:.2f} seconds.")
     else:
-        logger.error(f"An error occurred: {error}")
-        await ctx.send(f"An error occurred: {error}")
+        logger.error(f"Error: {error}")
+        await ctx.send(f"Error: {error}")
 
 @discord_bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error):
-    logger.error(f"An error occurred in app command: {error}")
+    logger.error(f"App command error: {error}")
     try:
         if isinstance(error, discord_commands.errors.CommandOnCooldown):
-            await interaction.response.send_message(f"This command is on cooldown. Try again in {error.retry_after:.2f} seconds.", ephemeral=True)
+            await interaction.response.send_message(f"Cooldown. Try again in {error.retry_after:.2f} seconds.", ephemeral=True)
         elif not interaction.response.is_done():
-            await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
+            await interaction.response.send_message(f"Error: {error}", ephemeral=True)
         else:
-            logger.warning("Interaction response already done, could not send error message.")
+            logger.warning("Response already sent.")
     except discord.errors.NotFound:
-        logger.error("Interaction not found, could not send error message (interaction already invalidated).")
+        logger.error("Interaction not found.")
 
 async def run_discord_bot():
     try:
-        await discord_bot.start(DISCORD_TOKEN)
+        await discord_bot.start(os.environ['DISCORD_TOKEN'])
     except Exception as e:
         logger.error(f"Error starting the bot: {e}")
 
 if __name__ == "__main__":
+    print_header("Aqua Prime Discord Bot Starting")
     asyncio.run(run_discord_bot())

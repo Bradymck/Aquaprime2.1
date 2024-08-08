@@ -17,6 +17,9 @@ def analyze_sentiment(text):
 
 async def generate_response_with_openai(prompt):
     try:
+        # Log the prompt here as well for redundancy
+        logger.info(f"Sending prompt to OpenAI: {prompt}")
+
         response = await client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -47,6 +50,9 @@ async def process_message_with_context(content, user_id, platform, conversation_
               f"Recent Context: {ram_messages}\n"
               f"User Message: {content}")
 
+    # Log the prompt here
+    logger.info(f"Prompt being sent to OpenAI: {prompt}")
+
     ai_response = await generate_response_with_openai(prompt)
     return ai_response
 
@@ -65,14 +71,14 @@ async def save_message(content, platform, user_id, username):
             session.add(new_user)
     logger.info(f"Message saved to database for user {username}")
 
-def get_relevant_summary(user_id):
+def get_relevant_summary(user_id, query=None):
     with session_scope() as session:
         latest_summary = session.query(TranscriptSummary).order_by(TranscriptSummary.created_at.desc()).first()
         user = session.query(UserEngagement).filter_by(user_id=user_id).first()
         last_interaction = user.last_active if user else None
 
         if last_interaction and latest_summary and latest_summary.created_at > last_interaction:
-            return latest_summary
+            return latest_summary.content if latest_summary else None
 
         return session.query(TranscriptSummary).order_by(TranscriptSummary.created_at.desc()).first()
 
@@ -103,4 +109,4 @@ async def periodic_summarization(agent_id, api_key, user_id):
 async def summarize_transcripts(transcripts):
     # This function should be implemented to create summaries from the provided transcripts
     # It should use the OpenAI API to generate summaries
-    pass
+    passs
