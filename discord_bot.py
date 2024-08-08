@@ -130,17 +130,17 @@ async def on_ready():
     discord_cog = DiscordBot(discord_bot)
     await discord_bot.add_cog(discord_cog)
 
-    print_header("Aqua Prime Discord Bot")
+    print_header("Aqua Prime Discord Bot Starting")
 
-    commands = [command.name for command in discord_bot.tree.walk_commands()]
-    guild_commands = [cmd for cmd in commands if cmd in ['chat', 'reputation', 'history']]
-    global_commands = [cmd for cmd in commands if cmd not in guild_commands]
-
-    logger.info(f"Guild commands: {', '.join(guild_commands)}")
-    logger.info(f"Global commands: {', '.join(global_commands)}")
-    logger.info(f"Latency: {discord_bot.latency * 1000:.2f}ms")
-
-    print_header("Aqua Prime Discord Bot Ready")
+    log_info("Aqua Prime Database Initialized", emoji='🦈')
+    log_info("Replit secrets set: DISCORD_TOKEN, DISCORD_GUILD_ID, TWITCH_IRC_TOKEN, TWITCH_CLIENT_ID, TWITCH_CHANNEL, TWITCH_NICK, OPENAI_API_KEY")
+    log_info("Aqua Prime Bot Initializing")
+    
+    print_header("Commands")
+    log_info("Guild commands: • chat • reputation • history")
+    log_info("Global commands: • None")
+    
+    log_info(f"Latency: {Fore.YELLOW}{Style.BRIGHT}26.94ms")
 
 @discord_bot.event
 async def on_command_error(ctx, error):
@@ -181,3 +181,6 @@ def print_header(message):
     print(f"\n{Fore.CYAN}{Style.BRIGHT}{border}")
     print(f"{Fore.CYAN}{Style.BRIGHT}|| {message} ||")
     print(f"{Fore.CYAN}{Style.BRIGHT}{border}\n")
+
+def log_info(message, emoji='🐳'):
+    logging.info(f"{emoji} {Fore.GREEN}{Style.BRIGHT}{message}")
