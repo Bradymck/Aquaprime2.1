@@ -65,6 +65,10 @@ async def generate_response(prompt):
         logger.error(f"OpenAI API error: {e}")
         return "Sorry, I encountered an error."
 
+# Define the print_header function
+def print_header(message):
+    print(f"\n{Fore.CYAN}{Style.BRIGHT}{message}{Style.RESET_ALL}")
+
 async def main():
     print_header("Aqua Prime Bot Starting")
 

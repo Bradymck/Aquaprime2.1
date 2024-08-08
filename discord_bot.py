@@ -9,7 +9,7 @@ from colorama import init, Fore, Back, Style
 from database import session_scope, UserEngagement
 from utils import process_message_with_context, save_message, get_relevant_summary
 from api_client import fetch_recent_conversations
-from shared_utils import logger, print_header, COLORS
+from shared_utils import logger
 
 init(autoreset=True)
 
@@ -136,8 +136,6 @@ async def on_ready():
     guild_commands = [cmd for cmd in commands if cmd in ['chat', 'reputation', 'history']]
     global_commands = [cmd for cmd in commands if cmd not in guild_commands]
 
-    logger.info(f"Logged in as {discord_bot.user}")
-    logger.info(f"Connected to {len(discord_bot.guilds)} guilds")
     logger.info(f"Guild commands: {', '.join(guild_commands)}")
     logger.info(f"Global commands: {', '.join(global_commands)}")
     logger.info(f"Latency: {discord_bot.latency * 1000:.2f}ms")
@@ -176,3 +174,10 @@ async def run_discord_bot():
 if __name__ == "__main__":
     print_header("Aqua Prime Discord Bot Starting")
     asyncio.run(run_discord_bot())
+
+def print_header(message):
+    # Print a formatted header with borders and colors
+    border = "=" * (len(message) + 4)
+    print(f"\n{Fore.CYAN}{Style.BRIGHT}{border}")
+    print(f"{Fore.CYAN}{Style.BRIGHT}|| {message} ||")
+    print(f"{Fore.CYAN}{Style.BRIGHT}{border}\n")
