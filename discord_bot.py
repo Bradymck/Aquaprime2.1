@@ -135,11 +135,11 @@ async def on_ready():
     log_info("Aqua Prime Database Initialized", emoji='🦈')
     log_info("Replit secrets set: DISCORD_TOKEN, DISCORD_GUILD_ID, TWITCH_IRC_TOKEN, TWITCH_CLIENT_ID, TWITCH_CHANNEL, TWITCH_NICK, OPENAI_API_KEY")
     log_info("Aqua Prime Bot Initializing")
-    
+
     print_header("Commands")
     log_info("Guild commands: • chat • reputation • history")
     log_info("Global commands: • None")
-    
+
     log_info(f"Latency: {Fore.YELLOW}{Style.BRIGHT}26.94ms")
 
 @discord_bot.event
