@@ -10,6 +10,7 @@ from twitch_bot import run_twitch_bot
 from database import init_db
 from api_client import scheduled_sync
 from openai import AsyncOpenAI
+from shared_utils import print_header, log_info
 
 # Initialize colorama
 init(autoreset=True)
@@ -65,16 +66,13 @@ async def generate_response(prompt):
         logger.error(f"OpenAI API error: {e}")
         return "Sorry, I encountered an error."
 
-# Define the print_header function
-def print_header(message):
-    print(f"\n{Fore.CYAN}{Style.BRIGHT}{message}{Style.RESET_ALL}")
-
 async def main():
     print_header("Aqua Prime Bot Starting")
+    log_info("Initializing Discord bot...")
 
     # Import the run functions here to avoid circular imports
     from discord_bot import run_discord_bot
-    from twitch_bot import run_twitch_bot  # If you have a Twitch bot
+    # from twitch_bot import run_twitch_bot  # Uncomment if you have a Twitch bot
 
     await run_discord_bot()
     # await run_twitch_bot()  # Uncomment if you have a Twitch bot
@@ -103,3 +101,19 @@ if __name__ == "__main__":
         print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
         logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Shutdown Complete{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
+
+# Import your commands cog
+from gameCommands import CommandsCog
+
+bot = commands.Bot(command_prefix='!')
+
+async def setup():
+    await bot.add_cog(CommandsCog(bot))
+
+@bot.event
+async def on_ready():
+    print(f'Logged in as {bot.user}')
+    await setup()  # Load the commands cog when the bot is ready
+
+# Run the bot with your token
+bot.run('YOUR_BOT_TOKEN')
