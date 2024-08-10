@@ -8,8 +8,7 @@ init(autoreset=True)
 
 # Set up logger
 logger = logging.getLogger('UnifiedBot')
-logging.basicConfig(level=logging.WARNING,  # Change to WARNING to reduce log verbosity
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def print_header(message):
     print(f"{Fore.CYAN}=== {message} ==={Style.RESET_ALL}")
@@ -38,7 +37,6 @@ def log_error(message):
 
 async def generate_response_with_openai(prompt):
     logger.info(f"Prompt being sent to OpenAI: {prompt}")
-    # Assuming the OpenAI API key is stored in an environment variable
     openai.api_key = os.getenv("OPENAI_API_KEY")
 
     try:
@@ -54,7 +52,6 @@ async def generate_response_with_openai(prompt):
 
 async def process_message_with_context(prompt, user_id, platform, conversation_id):
     logger.info(f"Processing message for user {user_id} on platform {platform}")
-    # Combine the prompt with user and conversation context
     combined_prompt = f"User: {user_id}\nPlatform: {platform}\nConversation: {conversation_id}\n{prompt}"
 
     response = await generate_response_with_openai(combined_prompt)

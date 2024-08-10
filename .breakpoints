@@ -3,22 +3,22 @@
     "discord_bot.py": [
       {
         "id": "ecf4bab2-11d5-4317-9557-1b5682d0707d",
-        "line": 151,
-        "version": 35,
-        "index": 7368
+        "line": 1,
+        "version": 137,
+        "index": 0
       }
     ],
     "main.py": [
       {
         "id": "41a44872-3fd9-46f6-9931-faaf730a1be5",
         "line": 1,
-        "version": 1118,
+        "version": 1201,
         "index": 0
       },
       {
         "id": "98d78c56-b3da-4fac-9cf2-8110121b3db5",
         "line": 1,
-        "version": 1118,
+        "version": 1201,
         "index": 0
       }
     ]
