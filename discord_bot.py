@@ -64,10 +64,15 @@ class DiscordBot(discord_commands.Cog):
     @discord_commands.cooldown(1, 5, discord_commands.BucketType.user)
     async def chat(self, interaction: discord.Interaction, message: str):
         user_id = str(interaction.user.id)
-        conversation_id = self.conversations.get(user_id)
-        if not conversation_id:
-            logger.info(f"No conversation ID for user {user_id}.")
-            conversation_id = None
+        
+        # Check if the user already has a conversation ID
+        if user_id not in self.conversations:
+            # Create a new conversation ID and store it
+            conversation_id = f"conv_{user_id}_{int(datetime.utcnow().timestamp())}"
+            self.conversations[user_id] = conversation_id
+            logger.info(f"Created new conversation ID for user {user_id}: {conversation_id}")
+        else:
+            conversation_id = self.conversations[user_id]
 
         try:
             relevant_summary = get_relevant_summary(user_id)
