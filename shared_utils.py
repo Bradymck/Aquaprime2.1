@@ -1,4 +1,5 @@
 import logging
+import os  # Add this import statement
 from colorama import init, Fore, Back, Style
 from openai import AsyncOpenAI  # Ensure this is imported
 
