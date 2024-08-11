@@ -1,5 +1,6 @@
 import logging
 from colorama import init, Fore, Back, Style
+from openai import AsyncOpenAI  # Ensure this is imported
 
 # Initialize colorama for cross-platform color support
 init(autoreset=True)
@@ -20,3 +21,6 @@ COLORS = {
     'error': Fore.WHITE + Back.RED,
     'reset': Style.RESET_ALL
 }
+
+# Initialize OpenAI client
+client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # Use AsyncOpenAI
