@@ -115,8 +115,8 @@ def update_user_reputations():
                 if user.reputation is None:
                     user.reputation = 50  # Set a default value if not initialized
 
-                # Log before updating reputation
-                logger.info(f"Before Update - User: {user.username}, Reputation: {user.reputation}")
+                # Log the sentiment and role for debugging
+                logger.info(f"User {user.username} has role {user.role} with sentiment {user.overall_sentiment}")
 
                 if user.role == "Black Hat":
                     if user.overall_sentiment > 50:  # Good behavior
@@ -138,7 +138,7 @@ def update_user_reputations():
 
                 # Ensure reputation stays within bounds
                 user.reputation = max(0, min(user.reputation, 100))
-                logger.info(f"After Update - User: {user.username}, Reputation: {user.reputation}")
+                logger.info(f"New Reputation for user: {user.username}, Updated Reputation: {user.reputation}")
     logger.info("User reputations updated")
 
 def get_user_reputation(user_id):
@@ -178,3 +178,28 @@ def get_user_sentiment(user_id):
     with session_scope() as session:
         user = session.query(UserEngagement).filter_by(user_id=user_id).first()
         return user.overall_sentiment if user else 0.0
+
+import discord
+import asyncio
+
+client = discord.Client()
+
+@client.event
+async def on_ready():
+    print(f'Logged in as {client.user}')
+
+@client.event
+async def on_message(message):
+    if message.content == '!shutdown':
+        await shutdown_bot()
+
+async def shutdown_bot():
+    print("Shutting down...")
+    await client.close()
+
+try:
+    client.run('YOUR_TOKEN')
+except Exception as e:
+    print(f"Error: {e}")
+finally:
+    print("Bot has been shut down.")
