@@ -14,29 +14,29 @@ client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
 def analyze_sentiment(text):
     blob = TextBlob(text)
-    return blob.sentiment.polarity
+    # Convert sentiment polarity from -1 to 1 into a scale of 1 to 100
+    return int((blob.sentiment.polarity + 1) * 50)  # Scale to 1-100
 
 async def generate_response_with_openai(prompt, user_id):
     try:
-        # Log the prompt for debugging
         logger.info(f"Sending prompt to OpenAI: {prompt}")
 
-        # Highlight the prompt in orange
         print(f"{Fore.LIGHTYELLOW_EX}Prompt being sent to OpenAI:\n{prompt}{Fore.RESET}")
 
-        # Retrieve user context and narrative context
-        narrative_context = get_narrative_context()  # Function to retrieve relevant game lore
-        chat_history = get_chat_history(user_id)  # Function to retrieve relevant chat history
-        user_sentiment = get_user_sentiment(user_id)  # Function to retrieve user sentiment
+        narrative_context = get_narrative_context()
+        chat_history = get_chat_history(user_id)
+        user_sentiment = get_user_sentiment(user_id)
 
-        # Construct a more immersive prompt
+        # Add emoji based on user sentiment
+        sentiment_emoji = "😃" if user_sentiment > 75 else "🙂" if user_sentiment > 50 else "😐" if user_sentiment > 25 else "😞"
+        
         full_prompt = (
             f"You are the AI game master (ARI) in Aqua Prime, a TTRPG. "
             f"Your role is to engage the player in character, responding as if you are part of the game world. "
             f"Consider the following:\n"
             f"Narrative Context: {narrative_context}\n"
             f"Recent Chat History: {chat_history}\n"
-            f"User Sentiment: {user_sentiment}\n"
+            f"User Sentiment: {user_sentiment} {sentiment_emoji}\n"
             f"User Message: {prompt}\n"
             f"Respond in character, incorporating the current game state."
         )
@@ -87,6 +87,7 @@ async def save_message(content, platform, user_id, username):
             user.message_count += 1
             user.last_active = datetime.utcnow()
             user.overall_sentiment = (user.overall_sentiment * (user.message_count - 1) + sentiment) / user.message_count
+            user.overall_sentiment = int(user.overall_sentiment)  # Ensure it's an integer
         else:
             new_user = UserEngagement(user_id=user_id, username=username, message_count=1, overall_sentiment=sentiment)
             session.add(new_user)
@@ -108,12 +109,26 @@ def update_user_reputations():
         users = session.query(UserEngagement).all()
         for user in users:
             if (datetime.utcnow() - user.last_active) <= timedelta(days=7):
-                user.reputation += 1
-            if user.overall_sentiment > 0.5:
-                user.reputation += 2
-            elif user.overall_sentiment < -0.5:
-                user.reputation -= 1
-            user.reputation = max(0, min(user.reputation, 100))
+                if user.role == "Black Hat":
+                    if user.overall_sentiment > 50:  # Good behavior
+                        user.reputation -= 2  # Punish for good behavior
+                    else:
+                        user.reputation += 2  # Reward for bad behavior
+                elif user.role == "White Hat":
+                    if user.overall_sentiment < 50:  # Bad behavior
+                        user.reputation -= 2  # Punish for bad behavior
+                    else:
+                        user.reputation += 2  # Reward for good behavior
+                elif user.role == "Grey Hat":
+                    if user.overall_sentiment > 50:  # Good behavior
+                        user.reputation -= 1  # Punish for good behavior
+                        user.reputation *= 1.5  # Apply multiplier for Grey Hat
+                    else:
+                        user.reputation -= 1  # Punish for bad behavior
+                        user.reputation *= 1.5  # Apply multiplier for Grey Hat
+
+                # Ensure reputation stays within bounds
+                user.reputation = max(0, min(user.reputation, 100))
     logger.info("User reputations updated")
 
 def purge_old_messages(days_to_keep=30):
