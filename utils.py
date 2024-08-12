@@ -4,6 +4,7 @@ from database import session_scope, UserEngagement, Message, TranscriptSummary
 from textblob import TextBlob
 from openai import AsyncOpenAI
 import os
+from colorama import Fore  # Ensure colorama is imported
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -19,6 +20,9 @@ async def generate_response_with_openai(prompt):
     try:
         # Log the prompt here as well for redundancy
         logger.info(f"Sending prompt to OpenAI: {prompt}")
+
+        # Highlight the prompt in orange
+        print(f"{Fore.LIGHTYELLOW_EX}Prompt being sent to OpenAI:\n{prompt}{Fore.RESET}")
 
         response = await client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -109,4 +113,4 @@ async def periodic_summarization(agent_id, api_key, user_id):
 async def summarize_transcripts(transcripts):
     # This function should be implemented to create summaries from the provided transcripts
     # It should use the OpenAI API to generate summaries
-    passs
+    pass
