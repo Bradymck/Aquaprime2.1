@@ -109,6 +109,12 @@ def update_user_reputations():
         users = session.query(UserEngagement).all()
         for user in users:
             if (datetime.utcnow() - user.last_active) <= timedelta(days=7):
+                logger.info(f"Updating reputation for user: {user.username}, Role: {user.role}, Sentiment: {user.overall_sentiment}, Current Reputation: {user.reputation}")
+                
+                # Ensure reputation is initialized
+                if user.reputation is None:
+                    user.reputation = 50  # Set a default value if not initialized
+
                 if user.role == "Black Hat":
                     if user.overall_sentiment > 50:  # Good behavior
                         user.reputation -= 2  # Punish for good behavior
@@ -129,6 +135,7 @@ def update_user_reputations():
 
                 # Ensure reputation stays within bounds
                 user.reputation = max(0, min(user.reputation, 100))
+                logger.info(f"New Reputation for user: {user.username}, Updated Reputation: {user.reputation}")
     logger.info("User reputations updated")
 
 def purge_old_messages(days_to_keep=30):
