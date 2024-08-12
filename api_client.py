@@ -1,50 +1,23 @@
+import logging
 import aiohttp
 import asyncio
-import logging
 import os
 from sqlalchemy import select
 from database import session_scope, Conversation, ConversationMessage
 from typing import List, Dict, Any, Optional
-from asynciolimiter import Limiter  # Corrected import statement
+from asynciolimiter import Limiter
 from datetime import datetime
 from colorama import init, Fore, Back, Style
-import tracemalloc
-tracemalloc.start()
-import aiofiles
-from sqlalchemy import select
 
 # Initialize colorama
 init(autoreset=True)
 
-# Aqua Prime themed colors
-COLORS = {
-    'header': Fore.WHITE + Back.BLUE,
-    'info': Fore.BLACK + Back.CYAN,
-    'success': Fore.BLACK + Back.GREEN,
-    'warning': Fore.BLACK + Back.YELLOW,
-    'error': Fore.WHITE + Back.RED,
-    'reset': Style.RESET_ALL
-}
-
-class AquaPrimeFormatter(logging.Formatter):
-    def format(self, record):
-        log_color = COLORS['info']
-        if record.levelno >= logging.ERROR:
-            log_color = COLORS['error']
-        elif record.levelno >= logging.WARNING:
-            log_color = COLORS['warning']
-
-        log_message = super().format(record)
-
-        # Highlight the entire line for errors
-        if record.levelno >= logging.ERROR:
-            return f"{COLORS['error']}{log_message:<80}{COLORS['reset']}"
-        else:
-            return f"{log_color}{log_message:<80}{COLORS['reset']}"
-
+# Initialize logging
 logger = logging.getLogger('UnifiedBot')
 handler = logging.StreamHandler()
-handler.setFormatter(AquaPrimeFormatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
@@ -55,13 +28,13 @@ PLAY_AI_USER_ID = os.getenv('PLAY_AI_USER_ID')
 AGENT_ID = os.getenv('AGENT_ID')
 
 # Rate limiter: 10 requests per second
-rate_limiter = Limiter(10 / 1)  # Corrected import statement
+rate_limiter = Limiter(10 / 1)
 
 async def make_api_request(url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]] = None, max_retries: int = 3) -> Optional[Dict[str, Any]]:
     async with rate_limiter:
-        async with aiohttp.ClientSession() as session:
-            for attempt in range(max_retries):
-                try:
+        for attempt in range(max_retries):
+            try:
+                async with aiohttp.ClientSession() as session:
                     async with session.get(url, headers=headers, params=params) as response:
                         if response.status == 200:
                             return await response.json()
@@ -74,12 +47,12 @@ async def make_api_request(url: str, headers: Dict[str, str], params: Optional[D
                                 await asyncio.sleep(2 ** attempt)  # Exponential backoff
                             else:
                                 return None
-                except Exception as e:
-                    logger.error(f"Error making API request: {str(e)}")
-                    if attempt < max_retries - 1:
-                        await asyncio.sleep(2 ** attempt)
-                    else:
-                        return None
+            except Exception as e:
+                logger.error(f"Error making API request: {str(e)}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)
+                else:
+                    return None
 
 async def fetch_recent_conversations() -> List[Dict[str, Any]]:
     url = f"{PLAY_AI_API_URL}/agents/{AGENT_ID}/conversations"
@@ -129,8 +102,7 @@ async def scheduled_sync():
             async with session_scope() as session:
                 for conv in conversations:
                     try:
-                        result = await session.execute(select(Conversation).filter_by(conversation_id=conv['id']))
-                        existing_conv = result.scalar_one_or_none()
+                        existing_conv = (await session.execute(select(Conversation).filter_by(conversation_id=conv['id']))).scalar()
                         if existing_conv is None:
                             new_conv = Conversation(
                                 conversation_id=conv['id'],
@@ -140,7 +112,6 @@ async def scheduled_sync():
                                 summary=conv.get('summary', '')
                             )
                             session.add(new_conv)
-                            await session.flush()
                             new_count += 1
 
                             messages = await fetch_conversation_transcript(conv['id'])
@@ -168,29 +139,3 @@ async def scheduled_sync():
         logger.info("Scheduled sync task was cancelled.")
     except Exception as e:
         logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
-
-async def run_sync():
-    while True:
-        try:
-            connection_success = await test_api_connection()
-            if connection_success:
-                await scheduled_sync()
-            else:
-                logger.error("API connection test failed. Retrying in 5 minutes.")
-            await asyncio.sleep(300)
-        except Exception as e:
-            logger.error(f"An error occurred in run_sync: {e}")
-            await asyncio.sleep(300)
-
-async def start_scheduled_sync():
-    if not all([PLAY_AI_API_URL, PLAY_AI_API_KEY, PLAY_AI_USER_ID, AGENT_ID]):
-        logger.error("Missing required credentials. Please provide them via environment variables.")
-        return
-
-    try:
-        await run_sync()
-    except Exception as e:
-        logger.error(f"An unexpected error occurred in start_scheduled_sync: {e}")
-
-if __name__ == "__main__":
-    asyncio.run(start_scheduled_sync())

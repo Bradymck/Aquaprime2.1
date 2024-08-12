@@ -35,13 +35,13 @@ AsyncSessionMaker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 
 @asynccontextmanager
 async def session_scope():
-    async with AsyncSessionMaker() as session:
+    session = AsyncSessionMaker()
         try:
             yield session
             await session.commit()
         except Exception as e:
             await session.rollback()
-            raise
+            raise e
         finally:
             await session.close()
 
