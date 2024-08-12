@@ -2,6 +2,8 @@ import aiohttp
 import asyncio
 import logging
 import os
+from sqlalchemy import select
+from database import session_scope, Conversation, ConversationMessage
 from typing import List, Dict, Any, Optional
 from asynciolimiter import Limiter  # Corrected import statement
 from datetime import datetime
@@ -9,6 +11,7 @@ from colorama import init, Fore, Back, Style
 import tracemalloc
 tracemalloc.start()
 import aiofiles
+from sqlalchemy import select
 
 from database import session_scope, Conversation, ConversationMessage
 
@@ -128,7 +131,8 @@ async def scheduled_sync():
             async with session_scope() as session:
                 for conv in conversations:
                     try:
-                        existing_conv = await session.execute(select(Conversation).filter_by(conversation_id=conv['id'])).scalar_one_or_none()
+                        existing_conv = await session.execute(select(Conversation).filter_by(conversation_id=conv['id']))
+                        existing_conv = existing_conv.scalar_one_or_none()
                         if existing_conv is None:
                             new_conv = Conversation(
                                 conversation_id=conv['id'],

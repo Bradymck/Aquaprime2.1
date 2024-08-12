@@ -1,8 +1,8 @@
 import logging
-from sqlalchemy import create_engine, Column, DateTime, Float, Integer, String, JSON, ForeignKey
-from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import QueuePool
-from contextlib import contextmanager, asynccontextmanager
+from contextlib import asynccontextmanager
 from datetime import datetime
 from colorama import init, Fore, Style
 import random
@@ -30,8 +30,8 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 Base = declarative_base()
-engine = create_engine('sqlite:///unified_chat_memory.db', poolclass=QueuePool, pool_size=10, max_overflow=20)
-SessionMaker = sessionmaker(bind=engine)
+engine = create_async_engine('sqlite+aiosqlite:///unified_chat_memory.db', poolclass=QueuePool, pool_size=10, max_overflow=20)
+AsyncSessionMaker = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 class Message(Base):
     __tablename__ = 'messages'
