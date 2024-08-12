@@ -2,6 +2,8 @@ import logging
 import aiohttp
 import asyncio
 import os
+import asyncio
+from contextlib import asynccontextmanager
 from sqlalchemy import select
 from database import session_scope, Conversation, ConversationMessage
 from typing import List, Dict, Any, Optional
@@ -134,8 +136,6 @@ async def scheduled_sync():
                             update_count += 1
                     except Exception as e:
                         logger.error(f"Sync error: {str(e)}")
-
-                await session.commit()
 
             logger.info(f"Sync complete. New conversations: {new_count}, Updated: {update_count}, Messages: {message_count}")
             await asyncio.sleep(300)

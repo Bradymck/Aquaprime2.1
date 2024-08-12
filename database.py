@@ -1,12 +1,13 @@
 import logging
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import create_engine, Column, DateTime, Float, Integer, String, JSON, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON
-from contextlib import asynccontextmanager
+from sqlalchemy.pool import QueuePool
+from contextlib import contextmanager
 from datetime import datetime
 from colorama import init, Fore, Style
 import random
 import os
+
 
 # Initialize colorama
 init(autoreset=True)
