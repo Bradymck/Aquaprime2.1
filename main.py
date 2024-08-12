@@ -149,11 +149,10 @@ async def on_ready():
     logger.info(f'Logged in as {bot.user}')
     await setup()  # Load the commands cog when the bot is ready
 
-
 async def setup():
-    from gameCommands import setup_cog
-    await setup_cog()
-
+    from discord_bot import DiscordBot
+    await bot.add_cog(DiscordBot(bot))
+    await bot.tree.sync()  # Sync the application commands
 
 # Add this function to log commands asynchronously
 async def log_command(command):

@@ -17,9 +17,9 @@ class DiscordBot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name='chat', description='Chat with the AI')
-    async def chat(self, ctx, *, message: str):
-        user_id = str(ctx.author.id)
+    @discord.app_commands.command(name='chat', description='Chat with the AI')
+    async def chat(self, interaction: discord.Interaction, *, message: str):
+        user_id = str(interaction.user.id)
         conversation_id = None  # Example: You might track conversation IDs differently
 
         try:
@@ -32,14 +32,14 @@ class DiscordBot(commands.Cog):
             if relevant_summary:
                 response += f"Context: {relevant_summary[:100]}..."
 
-            await ctx.send(response)
-            await save_message(message, 'discord', user_id, ctx.author.name)
+            await interaction.response.send_message(response)
+            await save_message(message, 'discord', user_id, interaction.user.name)
 
             await game_state_manager.update_agent_knowledge(user_id, {"question": message, "answer": ai_response})
 
         except Exception as e:
             logger.error(f"Chat error for user {user_id}: {e}")
-            await ctx.send("An error occurred while processing your request.")
+            await interaction.response.send_message("An error occurred while processing your request.")
 
 @bot.event
 async def on_ready():

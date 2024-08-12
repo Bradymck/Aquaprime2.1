@@ -100,7 +100,7 @@ async def scheduled_sync():
             update_count = 0
             message_count = 0
 
-            async with session_scope() as session:
+            async for session in session_scope():
                 for conv in conversations:
                     try:
                         existing_conv = (await session.execute(select(Conversation).filter_by(conversation_id=conv['id']))).scalar()
