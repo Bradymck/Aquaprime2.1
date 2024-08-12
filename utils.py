@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 from colorama import init, Fore, Back, Style
-import openai
+from openai import AsyncOpenAI  # Use AsyncOpenAI
 import os
 from database import session_scope, Message, UserEngagement, TranscriptSummary  # Add this import
 
@@ -39,10 +39,10 @@ def log_error(message):
 
 async def generate_response_with_openai(prompt):
     logger.info(f"Prompt being sent to OpenAI: {prompt}")
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+    client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # Use AsyncOpenAI
 
     try:
-        response = await openai.Completion.create(
+        response = await client.Completion.create(
             engine="gpt-3.5-turbo-instruct",  # Updated to use the instruct model
             prompt=prompt,
             max_tokens=150

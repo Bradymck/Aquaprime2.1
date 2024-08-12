@@ -10,7 +10,7 @@ from colorama import init, Fore, Style
 from database import init_db
 init_db()  # Ensure the database is initialized
 from api_client import scheduled_sync
-from openai import OpenAI  # Changed from AsyncOpenAI to OpenAI
+from openai import AsyncOpenAI  # Changed to AsyncOpenAI
 from shared_utils import print_header, log_info, log_error
 from game_state_manager import GameStateManager  # Ensure this import is present
 
@@ -58,7 +58,7 @@ except ImportError:
     log_warning("PyNaCl is not installed, voice features will not be available. To install, run: pip install pynacl")
 
 # Initialize OpenAI client
-client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
+client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])  # Ensure this is AsyncOpenAI
 
 # Initialize GameStateManager
 repo_path = "./AquaPrimeLORE"

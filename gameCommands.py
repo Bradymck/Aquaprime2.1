@@ -7,7 +7,7 @@ from datetime import datetime
 from colorama import init, Fore, Style
 from database import init_db
 from api_client import scheduled_sync
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI  # Ensure this is AsyncOpenAI
 from shared_utils import print_header, log_info
 
 # Initialize colorama
@@ -47,7 +47,7 @@ if missing_secrets:
 logger.info(f"Replit secrets set: {', '.join(required_secrets)}")
 
 # Initialize OpenAI client
-client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
+client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])  # Ensure this is AsyncOpenAI
 
 async def generate_response(prompt):
     try:
@@ -74,6 +74,8 @@ async def main():
 
 def signal_handler():
     logger.info("Received shutdown signal. Closing bots...")
+    for task in asyncio.all_tasks():
+        task.cancel()
     asyncio.get_event_loop().stop()
 
 if __name__ == "__main__":
