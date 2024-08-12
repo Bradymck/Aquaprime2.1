@@ -1,8 +1,11 @@
 import subprocess
 import os
-import webbrowser
+import openai
 import threading
 from flask import Flask, render_template_string, redirect, url_for
+
+# Initialize OpenAI API
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
@@ -11,11 +14,23 @@ def get_git_diff():
     result = subprocess.run(['git', 'diff', '--cached'], stdout=subprocess.PIPE, text=True, encoding='utf-8')
     return result.stdout.strip()
 
-
 def generate_commit_message(diff):
     """Generate a commit message based on the provided git diff."""
-    # Your OpenAI logic here or any other commit message generation logic
-    return "Your AI-generated commit message"
+    prompt = f"Generate a clear and concise git commit message based on the following changes:\n{diff}\n\nCommit Message:"
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant skilled in generating commit messages."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return response['choices'][0]['message']['content'].strip()
+    
+    except openai.OpenAIError as e:
+        print(f"OpenAI API error: {e}")
+        return "Failed to generate commit message."
 
 def sync_code():
     # Stage all changes
@@ -53,12 +68,5 @@ def sync():
     message = sync_code()
     return redirect(url_for('index', message=message))
 
-def open_cursor_browser():
-    # Open the URL in Cursor's Simple Browser (if it supports VSCode URI scheme)
-    cursor_url = "vscode://vscode-webview/open?url=http://localhost:5000"
-    webbrowser.open(cursor_url)
-
 if __name__ == "__main__":
-    # Start the Flask server and open it in Cursor's internal browser
-    threading.Timer(1, open_cursor_browser).start()
     app.run(host='0.0.0.0', port=5000)
