@@ -115,31 +115,13 @@ def update_user_reputations():
                 if user.reputation is None:
                     user.reputation = 50  # Set a default value if not initialized
 
-                # Log the sentiment and role for debugging
-                logger.info(f"User {user.username} has role {user.role} with sentiment {user.overall_sentiment}")
+                # Log before updating reputation
+                logger.info(f"Before Update - User: {user.username}, Reputation: {user.reputation}")
 
-                if user.role == "Black Hat":
-                    if user.overall_sentiment > 50:  # Good behavior
-                        user.reputation -= 2  # Punish for good behavior
-                    else:
-                        user.reputation += 2  # Reward for bad behavior
-                elif user.role == "White Hat":
-                    if user.overall_sentiment < 50:  # Bad behavior
-                        user.reputation -= 2  # Punish for bad behavior
-                    else:
-                        user.reputation += 2  # Reward for good behavior
-                elif user.role == "Grey Hat":
-                    if user.overall_sentiment > 50:  # Good behavior
-                        user.reputation -= 1  # Punish for good behavior
-                        user.reputation *= 1.5  # Apply multiplier for Grey Hat
-                    else:
-                        user.reputation -= 1  # Punish for bad behavior
-                        user.reputation *= 1.5  # Apply multiplier for Grey Hat
-
-                # Ensure reputation stays within bounds
-                user.reputation = max(0, min(user.reputation, 100))
-                logger.info(f"New Reputation for user: {user.username}, Updated Reputation: {user.reputation}")
-    logger.info("User reputations updated")
+                # Reputation update logic...
+                
+                # Log after updating reputation
+                logger.info(f"After Update - User: {user.username}, Reputation: {user.reputation}")
 
 def get_user_reputation(user_id):
     with session_scope() as session:
@@ -148,12 +130,6 @@ def get_user_reputation(user_id):
             logger.info(f"Retrieved Reputation for User: {user.username}, Reputation: {user.reputation}")
             return user.reputation
         return None
-
-def purge_old_messages(days_to_keep=30):
-    with session_scope() as session:
-        cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
-        deleted = session.query(Message).filter(Message.created_at < cutoff_date).delete()
-        logger.info(f"Purged {deleted} messages older than {days_to_keep} days")
 
 async def periodic_summarization(agent_id, api_key, user_id):
     # This function should be implemented to periodically create summaries
@@ -209,3 +185,19 @@ except Exception as e:
     print(f"Error: {e}")
 finally:
     print("Bot has been shut down.")
+
+import asyncio
+from discord_bot import run_discord_bot
+
+def main():
+    # Create a new event loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    try:
+        loop.run_until_complete(run_discord_bot())
+    finally:
+        loop.close()
+
+if __name__ == "__main__":
+    main()
