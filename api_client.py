@@ -120,62 +120,62 @@ async def scheduled_sync():
         print(f"{COLORS['header']}{'Aqua Prime Sync Initiated':^80}{COLORS['reset']}")
         print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
 
-        conversations = await fetch_recent_conversations()  # Ensure this is awaited
-        if not conversations:  # Handle empty conversations
-            logger.info("No new conversations to sync.")
-            return
+        while True:  # Keep the sync running
+            conversations = await fetch_recent_conversations()  # Ensure this is awaited
+            if not conversations:  # Handle empty conversations
+                logger.info("No new conversations to sync.")
+                await asyncio.sleep(300)  # Sleep before the next sync attempt
+                continue
 
-        new_count = 0
-        update_count = 0
-        message_count = 0
+            new_count = 0
+            update_count = 0
+            message_count = 0
 
-        with session_scope() as session:
-            for conv in conversations:
-                try:
-                    existing_conv = session.query(Conversation).filter_by(conversation_id=conv['id']).first()
-                    if existing_conv is None:
-                        new_conv = Conversation(
-                            conversation_id=conv['id'],
-                            agent_id=AGENT_ID,
-                            start_time=datetime.fromisoformat(conv['startedAt'].replace('Z', '+00:00')),
-                            end_time=datetime.fromisoformat(conv['endedAt'].replace('Z', '+00:00')) if conv['endedAt'] else None,
-                            summary=conv.get('summary', '')
-                        )
-                        session.add(new_conv)
-                        new_count += 1
-
-                        messages = await fetch_conversation_transcript(conv['id'])
-                        for msg in messages:
-                            new_msg = ConversationMessage(
+            with session_scope() as session:
+                for conv in conversations:
+                    try:
+                        existing_conv = session.query(Conversation).filter_by(conversation_id=conv['id']).first()
+                        if existing_conv is None:
+                            new_conv = Conversation(
                                 conversation_id=conv['id'],
-                                role=msg['role'],
-                                content=msg['content'],
-                                timestamp=datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
+                                agent_id=AGENT_ID,
+                                start_time=datetime.fromisoformat(conv['startedAt'].replace('Z', '+00:00')),
+                                end_time=datetime.fromisoformat(conv['endedAt'].replace('Z', '+00:00')) if conv['endedAt'] else None,
+                                summary=conv.get('summary', '')
                             )
-                            session.add(new_msg)
-                        message_count += len(messages)
-                    else:
-                        existing_conv.end_time = datetime.fromisoformat(conv['endedAt'].replace('Z', '+00:00')) if conv['endedAt'] else None
-                        existing_conv.summary = conv.get('summary', '')
-                        update_count += 1
+                            session.add(new_conv)
+                            new_count += 1
 
-                except Exception as e:
-                    logger.error(f"Sync error: {str(e)}")
+                            messages = await fetch_conversation_transcript(conv['id'])
+                            for msg in messages:
+                                new_msg = ConversationMessage(
+                                    conversation_id=conv['id'],
+                                    role=msg['role'],
+                                    content=msg['content'],
+                                    timestamp=datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
+                                )
+                                session.add(new_msg)
+                            message_count += len(messages)
+                        else:
+                            existing_conv.end_time = datetime.fromisoformat(conv['endedAt'].replace('Z', '+00:00')) if conv['endedAt'] else None
+                            existing_conv.summary = conv.get('summary', '')
+                            update_count += 1
+                    except Exception as e:
+                        logger.error(f"Sync error: {str(e)}")
 
-        end_time = datetime.now()
-        duration = (end_time - start_time).total_seconds()
+            end_time = datetime.now()
+            duration = (end_time - start_time).total_seconds()
 
-        print(f"\n{COLORS['header']}{'=' * 80}{COLORS['reset']}")
-        print(f"{COLORS['header']}{'Aqua Prime Sync Completed':^80}{COLORS['reset']}")
-        print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
+            print(f"\n{COLORS['header']}{'=' * 80}{COLORS['reset']}")
+            print(f"{COLORS['header']}{'Aqua Prime Sync Completed':^80}{COLORS['reset']}")
+            print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
+            print(f"{COLORS['info']}{'Sync Summary':^80}{COLORS['reset']}")
+            print(f"{COLORS['info']}{'🆕 New Conversations:':<40}{new_count:>40}{COLORS['reset']}")
+            print(f"{COLORS['info']}{'📊 Updated Conversations:':<40}{update_count:>40}{COLORS['reset']}")
+            print(f"{COLORS['info']}{'💬 Messages Added:':<40}{message_count:>40}{COLORS['reset']}")
+            print(f"{COLORS['info']}{'⏱️ Duration (seconds):':<40}{duration:>40.2f}{COLORS['reset']}")
 
-        print(f"{COLORS['info']}{'Sync Summary':^80}{COLORS['reset']}")
-        print(f"{COLORS['info']}{'🆕 New Conversations:':<40}{new_count:>40}{COLORS['reset']}")
-        print(f"{COLORS['info']}{'📊 Updated Conversations:':<40}{update_count:>40}{COLORS['reset']}")
-        print(f"{COLORS['info']}{'💬 Messages Added:':<40}{message_count:>40}{COLORS['reset']}")
-        print(f"{COLORS['info']}{'⏱️ Duration (seconds):':<40}{duration:>40.2f}{COLORS['reset']}")
-
-        print(f"\n{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
+            await asyncio.sleep(300)  # Sleep before the next sync attempt
 
     except Exception as e:
         logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
