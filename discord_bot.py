@@ -23,36 +23,6 @@ COLORS = {
     'reset': Style.RESET_ALL
 }
 
-class AquaPrimeFormatter(logging.Formatter):
-    def format(self, record):
-        log_color = COLORS['info']
-        if record.levelno >= logging.ERROR:
-            log_color = COLORS['error']
-        elif record.levelno >= logging.WARNING:
-            log_color = COLORS['warning']
-
-        log_message = record.getMessage()  # Corrected method
-        return f"{log_color}{log_message:<80}{COLORS['reset']}"
-
-# Set up logging
-logger = logging.getLogger('discord_bot')
-handler = logging.StreamHandler()
-handler.setFormatter(AquaPrimeFormatter())
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
-
-DISCORD_TOKEN = os.environ['DISCORD_TOKEN']
-DISCORD_GUILD_ID = os.environ['DISCORD_GUILD_ID']
-
-if not DISCORD_TOKEN:
-    raise ValueError("No DISCORD_TOKEN found.")
-if not DISCORD_GUILD_ID:
-    raise ValueError("No DISCORD_GUILD_ID found.")
-
-intents = Intents.default()
-intents.message_content = True
-discord_bot = discord_commands.Bot(command_prefix="!", intents=intents)
-
 class DiscordBot(discord_commands.Cog):
     def __init__(self, bot):
         self.bot = bot
