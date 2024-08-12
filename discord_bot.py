@@ -62,7 +62,7 @@ class DiscordBot(discord_commands.Cog):
             await update_agent_knowledge(os.getenv('AGENT_ID'), {"question": message, "answer": ai_response})
 
             new_memory = {"timestamp": str(datetime.now()), "description": f"User: {message}, AI: {ai_response}"}
-            game_state_manager.update_state(new_memory)
+            game_state_manager.update_state(new_memory)  # Ensure this method exists in GameStateManager
 
         except Exception as e:
             logger.error(f"Chat error for user {user_id}: {e}")

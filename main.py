@@ -7,15 +7,12 @@ import signal
 import random
 from datetime import datetime
 from colorama import init, Fore, Style
-from discord_bot import run_discord_bot
-from twitch_bot import run_twitch_bot
 from database import init_db
 init_db()  # Ensure the database is initialized
 from api_client import scheduled_sync
 from openai import OpenAI  # Changed from AsyncOpenAI to OpenAI
 from shared_utils import print_header, log_info, log_error, log_warning, generate_response
-from kb_manager import KBManager
-from game_state_manager import GameStateManager
+from game_state_manager import GameStateManager  # Ensure this import is present
 
 # Initialize colorama
 init(autoreset=True)
@@ -62,10 +59,6 @@ except ImportError:
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
-
-# Initialize KBManager
-kb_manager = KBManager("./AquaPrimeKB")
-kb_manager.load_knowledge_base()
 
 # Initialize GameStateManager
 repo_path = "./AquaPrimeLORE"
