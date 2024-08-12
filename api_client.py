@@ -125,7 +125,7 @@ async def scheduled_sync():
             update_count = 0
             message_count = 0
 
-            with session_scope() as session:
+            async with session_scope() as session:  # Ensure this is an async context manager
                 for conv in conversations:
                     try:
                         existing_conv = session.query(Conversation).filter_by(conversation_id=conv['id']).first()
