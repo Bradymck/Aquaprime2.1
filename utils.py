@@ -18,27 +18,27 @@ def analyze_sentiment(text):
 
 async def generate_response_with_openai(prompt, user_id):
     try:
-        # Log the prompt here as well for redundancy
+        # Log the prompt for debugging
         logger.info(f"Sending prompt to OpenAI: {prompt}")
 
         # Highlight the prompt in orange
         print(f"{Fore.LIGHTYELLOW_EX}Prompt being sent to OpenAI:\n{prompt}{Fore.RESET}")
 
         # Retrieve user context and narrative context
-        user_context = get_user_context(user_id)  # Function to retrieve user-specific context
         narrative_context = get_narrative_context()  # Function to retrieve relevant game lore
         chat_history = get_chat_history(user_id)  # Function to retrieve relevant chat history
+        user_sentiment = get_user_sentiment(user_id)  # Function to retrieve user sentiment
 
         # Construct a more immersive prompt
         full_prompt = (
             f"You are the AI game master (ARI) in Aqua Prime, a TTRPG. "
             f"Your role is to engage the player in character, responding as if you are part of the game world. "
             f"Consider the following:\n"
-            f"User Context: {user_context}\n"
             f"Narrative Context: {narrative_context}\n"
             f"Recent Chat History: {chat_history}\n"
+            f"User Sentiment: {user_sentiment}\n"
             f"User Message: {prompt}\n"
-            f"Respond in character, incorporating the user's interests and the current game state."
+            f"Respond in character, incorporating the current game state."
         )
 
         response = await client.chat.completions.create(
@@ -132,18 +132,16 @@ async def summarize_transcripts(transcripts):
     # It should use the OpenAI API to generate summaries
     pass
 
-def get_user_context(user_id):
-    with session_scope() as session:
-        user = session.query(UserEngagement).filter_by(user_id=user_id).first()
-        if user:
-            return f"User's interests: {user.interests}, Last active: {user.last_active}"
-    return "No specific user context available."
-
 def get_narrative_context():
     # Retrieve relevant game lore or current narrative elements
-    return "Current events: Faction Wars are ongoing, and the user has shown interest in the ARI's guidance."
+    return "Current events: Faction Wars are ongoing, and the ARI is guiding players through challenges."
 
 def get_chat_history(user_id):
     with session_scope() as session:
         past_messages = session.query(Message).filter_by(user_id=user_id).order_by(Message.created_at.desc()).limit(5).all()
         return " ".join(msg.content for msg in past_messages)
+
+def get_user_sentiment(user_id):
+    with session_scope() as session:
+        user = session.query(UserEngagement).filter_by(user_id=user_id).first()
+        return user.overall_sentiment if user else 0.0
