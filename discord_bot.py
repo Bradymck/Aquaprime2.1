@@ -1,86 +1,53 @@
+# discord_bot.py
+
 import os
 import logging
 import discord
-import random
-import asyncio
-from datetime import datetime  # Added this import
-from discord import Intents, app_commands
+from discord import app_commands
 from discord.ext import commands as discord_commands
 from colorama import init, Fore, Back, Style
 from database import session_scope, UserEngagement
 from utils import process_message_with_context, save_message, get_relevant_summary
-from api_client import fetch_recent_conversations
+from api_client import update_agent_knowledge, fetch_recent_conversations, update_agent
+from game_state_manager import GameStateManager
 from shared_utils import logger
+from kb_manager import KBManager
+from datetime import datetime
+import json
+import traceback
+
 
 init(autoreset=True)
 
-# Aqua Prime themed colors
-COLORS = {
-    'header': Fore.WHITE + Back.BLUE,
-    'info': Fore.BLACK + Back.CYAN,
-    'success': Fore.BLACK + Back.GREEN,
-    'warning': Fore.BLACK + Back.YELLOW,
-    'error': Fore.WHITE + Back.RED,
-    'reset': Style.RESET_ALL
-}
+# Correct the paths to point to the AquaPrimeLORE directory
+repo_path = "./AquaPrimeLORE"
+file_path = "./AquaPrimeLORE/game_state.json"
+game_state_manager = GameStateManager(repo_path, file_path)
 
-class AquaPrimeFormatter(logging.Formatter):
-    def format(self, record):
-        log_color = COLORS['info']
-        if record.levelno >= logging.ERROR:
-            log_color = COLORS['error']
-        elif record.levelno >= logging.WARNING:
-            log_color = COLORS['warning']
-
-        log_message = record.getMessage()  # Corrected method
-        return f"{log_color}{log_message:<80}{COLORS['reset']}"
-
-# Set up logging
-logger = logging.getLogger('discord_bot')
-handler = logging.StreamHandler()
-handler.setFormatter(AquaPrimeFormatter())
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
-
-DISCORD_TOKEN = os.environ['DISCORD_TOKEN']
-DISCORD_GUILD_ID = os.environ['DISCORD_GUILD_ID']
-
-if not DISCORD_TOKEN:
-    raise ValueError("No DISCORD_TOKEN found.")
-if not DISCORD_GUILD_ID:
-    raise ValueError("No DISCORD_GUILD_ID found.")
-
+# Properly initialize the bot using discord_commands.Bot
 intents = Intents.default()
-intents.message_content = True
-discord_bot = discord_commands.Bot(command_prefix="!", intents=intents)  # Ensure this is defined before usage
+intents.message_content = True  # Update for needed intent
+bot = discord_commands.Bot(command_prefix="!", intents=intents)
 
 class DiscordBot(discord_commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.conversations = {}
-        self.test_guild_id = discord.Object(id=int(DISCORD_GUILD_ID))
+        self.test_guild_id = discord.Object(id=int(os.getenv('DISCORD_GUILD_ID')))
         logger.info("DiscordBot initialized")
-
-    @app_commands.command(name='chat', description='Chat with the AI')
-    @discord_commands.cooldown(1, 5, discord_commands.BucketType.user)
+    @discord_commands.command(name='chat', description='Chat with the AI')
     async def chat(self, interaction: discord.Interaction, message: str):
         user_id = str(interaction.user.id)
-        
-        # Check if the user already has a conversation ID
-        if user_id not in self.conversations:
-            # Create a new conversation ID and store it
-            conversation_id = f"conv_{user_id}_{int(datetime.utcnow().timestamp())}"
-            self.conversations[user_id] = conversation_id
-            logger.info(f"Created new conversation ID for user {user_id}: {conversation_id}")
-        else:
-            conversation_id = self.conversations[user_id]
+        conversation_id = self.conversations.get(user_id)
+        if not conversation_id:
+            logger.info(f"No conversation ID for user {user_id}.")
+            conversation_id = None
 
         try:
             relevant_summary = get_relevant_summary(user_id)
-            summary_context = f"Summary: {relevant_summary.content}" if relevant_summary else "No summary available."
+            summary_context = f"Summary: {relevant_summary}" if relevant_summary else "No summary available."
 
             prompt = f"{summary_context}\n\nUser: {message}\n\n"
-
             ai_response = await process_message_with_context(prompt, user_id, 'discord', conversation_id)
             response = f"AI: {ai_response}\n"
             if relevant_summary:
@@ -89,101 +56,27 @@ class DiscordBot(discord_commands.Cog):
             await interaction.response.send_message(response)
             await save_message(message, 'discord', user_id, interaction.user.name)
             logger.info(f"Chat with user {user_id} successful")
+
+            await update_agent_knowledge(os.getenv('AGENT_ID'), {"question": message, "answer": ai_response})
+
+            new_memory = {"timestamp": str(datetime.now()), "description": f"User: {message}, AI: {ai_response}"}
+            game_state_manager.update_state(new_memory)
+
         except Exception as e:
             logger.error(f"Chat error for user {user_id}: {e}")
             await interaction.response.send_message("Error.", ephemeral=True)
 
-    @app_commands.command(name='reputation', description='Check your reputation')
-    async def check_reputation(self, interaction: discord.Interaction):
-        user_id = str(interaction.user.id)
-        try:
-            with session_scope() as session:
-                user = session.query(UserEngagement).filter_by(user_id=user_id).first()
-                if user:
-                    await interaction.response.send_message(f"Your reputation: {user.reputation}")
-                    logger.info(f"Reputation check for user {user_id}")
-                else:
-                    await interaction.response.send_message("No reputation yet.")
-        except Exception as e:
-            logger.error(f"Reputation error for user {user_id}: {e}")
-            await interaction.response.send_message("Error.", ephemeral=True)
-
-    @app_commands.command(name='history', description='View your history')
-    async def view_history(self, interaction: discord.Interaction):
-        user_id = str(interaction.user.id)
-        try:
-            conversations = await fetch_recent_conversations()
-            if conversations:
-                history = "\n".join([f"Conversation {i+1}: {conv['summary']}" for i, conv in enumerate(conversations[:5])])
-                await interaction.response.send_message(f"Your conversations:\n{history}")
-                logger.info(f"History for user {user_id}")
-            else:
-                await interaction.response.send_message("No conversations found.")
-        except Exception as e:
-            logger.error(f"History error for user {user_id}: {e}")
-            await interaction.response.send_message("Error.", ephemeral=True)
-
-@discord_bot.event
-async def on_message(message):
-    if message.author == discord_bot.user:
-        return
-
-    logger.info(f"Message from {message.author.name}: {message.content[:50]}...")
-    await discord_bot.process_commands(message)
-
-@discord_bot.event
+@bot.event
 async def on_ready():
-    discord_cog = DiscordBot(discord_bot)
-    await discord_bot.add_cog(discord_cog)  # Await the add_cog call
-
-    print_header("Aqua Prime Discord Bot")
-
-    commands = [command.name for command in discord_bot.tree.walk_commands()]
-    guild_commands = [cmd for cmd in commands if cmd in ['chat', 'reputation', 'history']]
-    global_commands = [cmd for cmd in commands if cmd not in guild_commands]
-
-    logger.info(f"Guild commands: {', '.join(guild_commands)}")
-    logger.info(f"Global commands: {', '.join(global_commands)}")
-    logger.info(f"Latency: {discord_bot.latency * 1000:.2f}ms")
-
-    print_header("Aqua Prime Discord Bot Ready")
-
-@discord_bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, discord_commands.errors.CommandNotFound):
-        await ctx.send("Command not found.")
-    elif isinstance(error, discord_commands.errors.CommandOnCooldown):
-        await ctx.send(f"Cooldown. Try again in {error.retry_after:.2f} seconds.")
-    else:
-        logger.error(f"Error: {error}")
-        await ctx.send(f"Error: {error}")
-
-@discord_bot.tree.error
-async def on_app_command_error(interaction: discord.Interaction, error):
-    logger.error(f"App command error: {error}")
-    try:
-        if isinstance(error, discord_commands.errors.CommandOnCooldown):
-            await interaction.response.send_message(f"Cooldown. Try again in {error.retry_after:.2f} seconds.", ephemeral=True)
-        elif not interaction.response.is_done():
-            await interaction.response.send_message(f"Error: {error}", ephemeral=True)
-        else:
-            logger.warning("Response already sent.")
-    except discord.errors.NotFound:
-        logger.error("Interaction not found.")
-
+    discord_cog = DiscordBot(bot)
+    await bot.add_cog(discord_cog)
+    logger.info("Aqua Prime Discord Bot Starting")
+logger.info(f"Available commands: {[command.name for command in bot.tree.get_commands()]}")
 async def run_discord_bot():
     try:
-        await discord_bot.start(os.environ['DISCORD_TOKEN'])
+        await bot.start(os.environ['DISCORD_TOKEN'])
     except Exception as e:
         logger.error(f"Error starting the bot: {e}")
 
 if __name__ == "__main__":
-    print_header("Aqua Prime Discord Bot Starting")
     asyncio.run(run_discord_bot())
-
-def print_header(message):
-    # Print a formatted header with borders and colors
-    border = "=" * (len(message) + 4)
-    print(f"\n{Fore.CYAN}{Style.BRIGHT}{border}")
-    print(f"{Fore.CYAN}{Style.BRIGHT}|| {message} ||")
-    print(f"{Fore.CYAN}{Style.BRIGHT}{border}\n")

@@ -1,189 +1,119 @@
-#gamecommands.py
+import os
+import logging
 import asyncio
+import signal
 import random
 from datetime import datetime
-import discord
-from discord.ext import commands
+from colorama import init, Fore, Style
+from discord_bot import run_discord_bot
+from twitch_bot import run_twitch_bot
+from database import init_db
+from api_client import scheduled_sync
+from openai import AsyncOpenAI
+from shared_utils import print_header, log_info
 
+# Initialize colorama
+init(autoreset=True)
 
-class CommandsCog(commands.Cog):
+# Aqua Prime themed emojis and symbols💧
+AQUA_EMOJIS = ["🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"]
 
-  def __init__(self, bot):
-    self.bot = bot
+class AquaPrimeFormatter(logging.Formatter):
+    def format(self, record):
+        aqua_colors = [Fore.CYAN, Fore.BLUE, Fore.GREEN]
+        color = random.choice(aqua_colors)
+        emoji = random.choice(AQUA_EMOJIS)
 
-  @commands.command(name='attack',
-                    brief="Rolls for an attack with a d20 and modifier")
-  @commands.cooldown(1, 86400, commands.BucketType.user)  # 24-hour cooldown
-  async def attack(self, ctx, user: discord.Member = None):
-    await self.perform_attack(ctx, user)
+        log_message = super().format(record)
+        return f"{color}{Style.BRIGHT}{emoji} {log_message}{Style.RESET_ALL}"
 
-  async def perform_attack(self, ctx, user: discord.Member = None):
-    print("\033[31mPerforming attack...\033[0m")
-    roll = random.randint(1, 20)
-    total = roll
+# Set up logging
+logger = logging.getLogger('UnifiedBot')
+handler = logging.StreamHandler()
+handler.setFormatter(AquaPrimeFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
-    member = ctx.guild.get_member(ctx.author.id)
-    if any(role.id == 1081109959292497928 for role in member.roles):
-      roll2 = random.randint(1, 20)
-      total += roll2
-    else:
-      pass
+# List of required Replit secrets
+required_secrets = [
+    'DISCORD_TOKEN', 'DISCORD_GUILD_ID', 'TWITCH_IRC_TOKEN', 'TWITCH_CLIENT_ID',
+    'TWITCH_CHANNEL', 'TWITCH_NICK', 'OPENAI_API_KEY'
+]
 
-    target_user_mention = f"is attacking {user.mention}" if user else "is attacking"
-    embed = discord.Embed(colour=0x00b0f4, timestamp=datetime.now())
-    embed.set_author(
-        name="Attack Roll",
-        icon_url=
-        "https://images-ext-1.discordapp.net/external/AkSGsZL11_KdXNhA2QqQs3OusLy8-_u65pmdhYZ3mzU/https/images.emojiterra.com/google/android-12l/512px/2694.png"
-    )
-    embed.add_field(name="",
-                    value=f"{ctx.author.mention} {target_user_mention}",
-                    inline=False)
-    embed.add_field(name="`  🎲  `", value=f"`{roll} ⚔`", inline=True)
-    if any(role.id == 1081109959292497928 for role in member.roles):
-      embed.add_field(name="`  🎲  `", value=f"`{roll2} ⚔`", inline=True)
-    embed.add_field(name="`Total 💥`", value=f"{total} ⚔", inline=False)
-    embed.set_thumbnail(
-        url="https://thumbs.gfycat.com/CompleteCornyGalago-max-1mb.gif")
-    embed.set_footer(
-        text="Aqua Prime",
-        icon_url=
-        "https://media.discordapp.net/attachments/1094443050098511922/1142958547353731104/ezgif-5-15676eab6f.gif"
-    )
+# Check for missing Replit secrets
+missing_secrets = [secret for secret in required_secrets if secret not in os.environ]
+if missing_secrets:
+    logger.error(f"Missing required Replit secrets: {', '.join(missing_secrets)}")
+    raise SystemExit(f"Missing required Replit secrets: {', '.join(missing_secrets)}")
 
-    await ctx.send(embed=embed)
+logger.info(f"Replit secrets set: {', '.join(required_secrets)}")
 
-  @commands.command(name='shoot', brief="Shoots a user with a gun")
-  async def shoot(self, ctx, user: discord.Member):
-    if user.id == self.bot.user.id:
-      await ctx.send(
-          "Nice try. I can't be killed. I'm a meme. 🤣"
-      )
-      return
+# Initialize OpenAI client
+client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
-    # Check if the target user is the boss
-    boss_role = discord.utils.get(ctx.guild.roles, name='Boss')
-    if boss_role in user.roles:
-      await ctx.send("You can't shoot the boss, they're too powerful!")
-      return
-
-    print("\033[34mCommand executed\033[0m")
-
-    # Check if the user has the Special Role or ID 🔫
-    member = ctx.guild.get_member(ctx.author.id)
-    if any(role.id in [1081109959162466319, 1081417524043857943]
-           for role in member.roles):
-
-      role_to_remove1 = discord.utils.get(ctx.guild.roles,
-                                          id=1081109959309279264)
-      role_to_remove2 = discord.utils.get(ctx.guild.roles,
-                                          id=1081109959162466319)
-      role_to_add = discord.utils.get(ctx.guild.roles, id=1081109959309279270)
-
-      await asyncio.sleep(10)  # Add a 10-second delay
-      await user.remove_roles(role_to_remove1, role_to_remove2)
-      await member.remove_roles(role_to_remove2)
-      await user.add_roles(role_to_add)
-      print("\033[34mRole added\033[0m")
-      await ctx.send(
-          f"{ctx.author.mention} just shot and killed {user.mention} 💥🔫. But... their lame little 3D printed gun broke in the process."
-      )
-
-    else:
-      await ctx.send("You need to buy a gun first. 🔫")
-
-  @commands.command(name='res', brief="Adds a role to a user")
-  async def res(self, ctx, user: discord.Member):
-    command_user = ctx.message.author
-    if any(role.id in [1081109959124729867] for role in command_user.roles):
-      command_user_role = discord.utils.get(ctx.guild.roles,
-                                            id=1081109959124729867)
-      target_user_role = discord.utils.get(ctx.guild.roles, 
-                                           id=1081109959309279270)
-      new_role = discord.utils.get(ctx.guild.roles, id=1081109959309279264)
-
-      await command_user.remove_roles(command_user_role)
-      await user.remove_roles(target_user_role)
-      await user.add_roles(new_role)
-      await ctx.send(f"{ctx.author.mention} just resurrected {user.mention}")
-
-    else:
-      await ctx.send("You don't have the permission to use this command.")
-
-  @commands.command(name='dice', brief="Rolls two six-sided dice")
-  async def roll(self, ctx):
-    roll1 = random.randint(1, 6)
-    roll2 = random.randint(1, 6)
-    total = roll1 + roll2
-
-    output = f"**{roll1}** :game_die:   **{roll2}** :game_die:   =   **{total}** :tada:"
-    embed = discord.Embed(title="Dice Roll", color=discord.Color.blue())
-    embed.add_field(name="Results", value=output, inline=False)
-    embed.description = f"{ctx.author.mention} rolled the dice! 🎲"
-    embed.set_thumbnail(
-        url="https://thumbs.gfycat.com/CompleteCornyGalago-max-1mb.gif")
-    await ctx.send(embed=embed)
-
-  @commands.command(name='spell',
-                    brief="Casts a random spell from the spell book")
-  async def spell(self, ctx):
-    spell_book = discord.utils.get(ctx.guild.roles, name='Spell Book')
-    if spell_book not in ctx.message.author.roles:
-      await ctx.send("You need to buy the Spell Book from the store first!")
-      return
-
-    user_id = ctx.message.author.id
-    current_time = datetime.datetime.now()
-    if user_id in last_execution:
-      lasttime = last_execution[user_id]
-      difference = current_time - lasttime
-      if difference.days < 1:
-        await ctx.send(
-            f"This command is on cooldown. Please try again in {1 - difference.days} days."
+async def generate_response(prompt):
+    try:
+        logger.info(f"Sending prompt to OpenAI: {prompt[:50]}...")  # Log first 50 chars of prompt
+        response = await client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ]
         )
-        return
+        return response.choices[0].message.content
+    except Exception as e:
+        logger.error(f"OpenAI API error: {e}")
+        return "Sorry, I encountered an error."
 
-    last_execution[user_id] = current_time
-    result = random.randint(1, len(spells.effects))
-    emoji = '🎲'
-    effect = spells.effects.get(result, "No effect.")
-    if result == 1:
-      role = discord.utils.get(ctx.guild.roles, name='🐸')
-      original_nick = ctx.author.display_name
-      await ctx.author.edit(nick=original_nick + ' 🐸')
-      await ctx.author.add_roles(role)
-      await ctx.author.edit(mute=True)
-      await asyncio.sleep(28800)
-      await ctx.author.edit(mute=False)
-      await ctx.author.remove_roles(role)
-      await ctx.send(
-          f"{ctx.author.mention} cast a spell! You've been turned into a 🐸 for 8 hours! Enjoy!"
-      )
-    else:
-      await ctx.send(f"{ctx.author.mention} cast a spell! {effect} {emoji}")
+async def main():
+    print_header("Aqua Prime Bot Starting")
+    log_info("Initializing Discord bot...")
 
+    # Import the run functions here to avoid circular imports
+    from discord_bot import run_discord_bot
+    # from twitch_bot import run_twitch_bot  # Uncomment if you have a Twitch bot
 
-@commands.Cog.listener()
-async def on_command_error(self, ctx, error):
-  if isinstance(error, commands.CommandOnCooldown):
-    # Convert the cooldown time from seconds to hours and minutes
-    hours = int(error.retry_after // 3600)
-    minutes = int((error.retry_after % 3600) // 60)
+    await run_discord_bot()
+    # await run_twitch_bot()  # Uncomment if you have a Twitch bot
 
-    # Construct the cooldown message
-    if hours > 0:
-      cooldown_msg = f"You're on cooldown! Please wait {hours} hour(s) and {minutes} minute(s) before using this command again."
-    else:
-      cooldown_msg = f"You're on cooldown! Please wait {minutes} minute(s) before using this command again."
+def signal_handler():
+    logger.info("Received shutdown signal. Closing bots...")
+    asyncio.get_event_loop().stop()
 
-    await ctx.send(cooldown_msg)
-    return  # This will suppress the default cooldown message
-  else:
-    print(f"\033[34mError occurred: {error}\033[0m")
+if __name__ == "__main__":
+    print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
+    logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Initializing{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
 
+    loop = asyncio.get_event_loop()
 
-async def setup(bot):
-  await bot.add_cog(CommandsCog(bot))
+    # Set up signal handlers
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, signal_handler)
 
+    try:
+        loop.run_until_complete(main())
+    except Exception as e:
+        logger.error(f"Error running bots: {e}")
+    finally:
+        loop.close()
+        print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
+        logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Shutdown Complete{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
 
-print("Commands cog is ready.")
+# Import your commands cog
+from gameCommands import CommandsCog
+
+bot = commands.Bot(command_prefix='!')
+
+async def setup():
+    await bot.add_cog(CommandsCog(bot))
+
+@bot.event
+async def on_ready():
+    print(f'Logged in as {bot.user}')
+    await setup()  # Load the commands cog when the bot is ready
+
+# Run the bot with your token
+bot.run('YOUR_BOT_TOKEN')

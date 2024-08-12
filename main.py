@@ -1,3 +1,5 @@
+# main.py
+
 import os
 import logging
 import asyncio
@@ -9,7 +11,10 @@ from discord_bot import run_discord_bot
 from twitch_bot import run_twitch_bot
 from database import init_db
 from api_client import scheduled_sync
-from openai import AsyncOpenAI
+from openai import OpenAI  # Changed from AsyncOpenAI to OpenAI
+from shared_utils import print_header, log_info, log_error, log_warning, generate_response
+from kb_manager import KBManager
+from game_state_manager import GameStateManager
 
 # Initialize colorama
 init(autoreset=True)
@@ -33,54 +38,65 @@ handler.setFormatter(AquaPrimeFormatter('%(asctime)s - %(name)s - %(levelname)s 
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
-# List of required Replit secrets
-required_secrets = [
+# List of required environment variables
+required_env_vars = [
     'DISCORD_TOKEN', 'DISCORD_GUILD_ID', 'TWITCH_IRC_TOKEN', 'TWITCH_CLIENT_ID',
-    'TWITCH_CHANNEL', 'TWITCH_NICK', 'OPENAI_API_KEY'
+    'TWITCH_CHANNEL', 'TWITCH_NICK', 'OPENAI_API_KEY', 'PLAY_AI_API_KEY',
+    'PLAY_AI_USER_ID', 'AGENT_ID', 'PLAY_AI_API_URL'
 ]
 
-# Check for missing Replit secrets
-missing_secrets = [secret for secret in required_secrets if secret not in os.environ]
-if missing_secrets:
-    logger.error(f"Missing required Replit secrets: {', '.join(missing_secrets)}")
-    raise SystemExit(f"Missing required Replit secrets: {', '.join(missing_secrets)}")
+# Check for missing environment variables
+missing_env_vars = [var for var in required_env_vars if var not in os.environ]
+if missing_env_vars:
+    log_error(f"Missing required environment variables: {', '.join(missing_env_vars)}")
+    raise SystemExit(f"Missing required environment variables: {', '.join(missing_env_vars)}")
 
-logger.info(f"Replit secrets set: {', '.join(required_secrets)}")
+log_info(f"All required environment variables are set")
+
+# Check for PyNaCl
+try:
+    import nacl
+except ImportError:
+    log_warning("PyNaCl is not installed, voice features will not be available. To install, run: pip install pynacl")
 
 # Initialize OpenAI client
-client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
+client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
-async def generate_response(prompt):
-    try:
-        logger.info(f"Sending prompt to OpenAI: {prompt[:50]}...")  # Log first 50 chars of prompt
-        response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        logger.error(f"OpenAI API error: {e}")
-        return "Sorry, I encountered an error."
+# Initialize KBManager
+kb_manager = KBManager("./AquaPrimeKB")
+kb_manager.load_knowledge_base()
 
-# Define the print_header function
-def print_header(message):
-    print(f"\n{Fore.CYAN}{Style.BRIGHT}{message}{Style.RESET_ALL}")
+# Initialize GameStateManager
+repo_path = "./AquaPrimeLORE"
+file_path = "./AquaPrimeLORE/game_state.json"
+game_state_manager = GameStateManager(repo_path, file_path)
 
 async def main():
     print_header("Aqua Prime Bot Starting")
 
-    # Import the run functions here to avoid circular imports
-    from discord_bot import run_discord_bot
-    from twitch_bot import run_twitch_bot  # If you have a Twitch bot
+    # Initialize database
+    init_db()
+    log_info("Database initialized")
 
-    await run_discord_bot()
-    # await run_twitch_bot()  # Uncomment if you have a Twitch bot
+    # Start the scheduled sync task
+    sync_task = asyncio.create_task(scheduled_sync())
+    log_info("Scheduled sync task started")
+
+    # Start the Discord bot
+    discord_task = asyncio.create_task(run_discord_bot())
+    log_info("Discord bot started")
+
+    # Start the Twitch bot
+    twitch_task = asyncio.create_task(run_twitch_bot())
+    log_info("Twitch bot started")
+
+    # Wait for both bots to complete (which should be never, unless there's an error)
+    await asyncio.gather(discord_task, twitch_task, sync_task)
 
 def signal_handler():
     logger.info("Received shutdown signal. Closing bots...")
+    for task in asyncio.all_tasks():
+        task.cancel()
     asyncio.get_event_loop().stop()
 
 if __name__ == "__main__":

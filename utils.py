@@ -1,88 +1,66 @@
 import logging
 from datetime import datetime, timedelta
-from database import session_scope, UserEngagement, Message, TranscriptSummary
-from textblob import TextBlob
-from openai import AsyncOpenAI
+from colorama import init, Fore, Back, Style
+import openai
 import os
-from colorama import Fore  # Ensure colorama is imported
+from database import session_scope, Message, UserEngagement, TranscriptSummary  # Add this import
 
-# Set up logging
-logger = logging.getLogger(__name__)
+# Initialize colorama for cross-platform color support
+init(autoreset=True)
 
-# Initialize OpenAI client
-token = os.environ.get('OPENAI_API_KEY')
-if not token:
-    logger.error("OpenAI API key is not set.")
-client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
+# Set up logger
+logger = logging.getLogger('UnifiedBot')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def analyze_sentiment(text):
-    blob = TextBlob(text)
-    # Convert sentiment polarity from -1 to 1 into a scale of 1 to 100
-    return int((blob.sentiment.polarity + 1) * 50)  # Scale to 1-100
+def print_header(message):
+    print(f"{Fore.CYAN}=== {message} ==={Style.RESET_ALL}")
 
-async def generate_response_with_openai(prompt, user_id):
-    try:
-        logger.info(f"Sending prompt to OpenAI: {prompt}")
-        print(f"{Fore.LIGHTYELLOW_EX}Prompt being sent to OpenAI:\n{prompt}{Fore.RESET}")
+# Expanded COLORS dictionary
+COLORS = {
+    'header': Fore.WHITE + Back.BLUE,
+    'info': Fore.BLACK + Back.CYAN,
+    'success': Fore.BLACK + Back.GREEN,
+    'warning': Fore.BLACK + Back.YELLOW,
+    'error': Fore.WHITE + Back.RED,
+    'reset': Style.RESET_ALL
+}
 
-        narrative_context = get_narrative_context()
-        chat_history = get_chat_history(user_id)
-        user_sentiment = get_user_sentiment(user_id)
+def log_info(message):
+    logger.info(f"{COLORS['info']}{message}{COLORS['reset']}")
 
-        sentiment_emoji = "😃" if user_sentiment > 75 else "🙂" if user_sentiment > 50 else "😐" if user_sentiment > 25 else "😞"
-        
-        full_prompt = (
-            f"You are the AI game master (ARI) in Aqua Prime, a TTRPG. "
-            f"Your role is to engage the player in character, responding as if you are part of the game world. "
-            f"Consider the following:\n"
-            f"Narrative Context: {narrative_context}\n"
-            f"Recent Chat History: {chat_history}\n"
-            f"User Sentiment: {user_sentiment} {sentiment_emoji}\n"
-            f"User Message: {prompt}\n"
-            f"Respond in character, incorporating the current game state."
-        )
+def log_success(message):
+    logger.info(f"{COLORS['success']}{message}{COLORS['reset']}")
 
-        response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": full_prompt}
-            ]
-        )
-        logger.info(f"OpenAI response: {response}")
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        logger.error(f"Error communicating with OpenAI API: {str(e)}")
-        if 'invalid_api_key' in str(e):
-            logger.error("Invalid API key. Please check your OpenAI API key in Replit secrets.")
-        elif 'rate limit' in str(e):
-            logger.error("Rate limit exceeded. Please try again later.")
-        return "Sorry, I encountered an error while processing your request."
+def log_warning(message):
+    logger.warning(f"{COLORS['warning']}{message}{COLORS['reset']}")
 
-async def process_message_with_context(content, user_id, platform, conversation_id):
-    with session_scope() as session:
-        past_messages = session.query(Message).filter_by(user_id=user_id).order_by(Message.created_at.desc()).limit(5).all()
-        past_messages = [msg.content for msg in past_messages]
+def log_error(message):
+    logger.error(f"{COLORS['error']}{message}{COLORS['reset']}")
 
-        user = session.query(UserEngagement).filter_by(user_id=user_id).first()
-        user_sentiment = user.overall_sentiment if user else 0.0
-
-    ram_messages = " ".join(past_messages)
-
-    prompt = (f"System Instructions: Handle the following user messages.\n"
-              f"User Sentiment: {user_sentiment}\n"
-              f"Platform: {platform}\n"
-              f"Recent Context: {ram_messages}\n"
-              f"User Message: {content}")
-
-    # Log the prompt here
+async def generate_response_with_openai(prompt):
     logger.info(f"Prompt being sent to OpenAI: {prompt}")
+    openai.api_key = os.getenv("OPENAI_API_KEY")
 
-    ai_response = await generate_response_with_openai(prompt, user_id)
-    return ai_response
+    try:
+        response = await openai.Completion.create(
+            engine="gpt-3.5-turbo-instruct",  # Updated to use the instruct model
+            prompt=prompt,
+            max_tokens=150
+        )
+        return response.choices[0].text.strip()
+    except Exception as e:
+        log_error(f"Error generating response from OpenAI: {e}")
+        return "An error occurred while generating the response."
+
+async def process_message_with_context(prompt, user_id, platform, conversation_id):
+    logger.info(f"Processing message for user {user_id} on platform {platform}")
+    combined_prompt = f"User: {user_id}\nPlatform: {platform}\nConversation: {conversation_id}\n{prompt}"
+
+    response = await generate_response_with_openai(combined_prompt)
+    return response
 
 async def save_message(content, platform, user_id, username):
-    sentiment = analyze_sentiment(content)
+    sentiment = analyze_sentiment(content)  # Make sure this function is defined
     with session_scope() as session:
         new_message = Message(content=content, platform=platform, user_id=user_id, username=username, sentiment=sentiment)
         session.add(new_message)
@@ -91,7 +69,6 @@ async def save_message(content, platform, user_id, username):
             user.message_count += 1
             user.last_active = datetime.utcnow()
             user.overall_sentiment = (user.overall_sentiment * (user.message_count - 1) + sentiment) / user.message_count
-            user.overall_sentiment = int(user.overall_sentiment)  # Ensure it's an integer
         else:
             new_user = UserEngagement(user_id=user_id, username=username, message_count=1, overall_sentiment=sentiment)
             session.add(new_user)
@@ -106,49 +83,26 @@ def get_relevant_summary(user_id, query=None):
         if last_interaction and latest_summary and latest_summary.created_at > last_interaction:
             return latest_summary.content if latest_summary else None
 
-        return session.query(TranscriptSummary).order_by(TranscriptSummary.created_at.desc()).first()
+        return session.query(TranscriptSummary).order_by(TranscriptSummary.created_at.desc()).first().content if latest_summary else None
 
 def update_user_reputations():
     with session_scope() as session:
         users = session.query(UserEngagement).all()
         for user in users:
             if (datetime.utcnow() - user.last_active) <= timedelta(days=7):
-                logger.info(f"Updating reputation for user: {user.username}, Role: {user.role}, Sentiment: {user.overall_sentiment}, Current Reputation: {user.reputation}")
+                user.reputation += 1
+            if user.overall_sentiment > 0.5:
+                user.reputation += 2
+            elif user.overall_sentiment < -0.5:
+                user.reputation -= 1
+            user.reputation = max(0, min(user.reputation, 100))
+    logger.info("User reputations updated")
 
-                # Ensure reputation is initialized
-                if user.reputation is None:
-                    user.reputation = 50  # Set a default value if not initialized
-
-                # Reputation update logic based on role
-                if user.role == "Black Hat":
-                    if user.overall_sentiment > 50:  # Good behavior
-                        user.reputation -= 2  # Punish for good behavior
-                    else:
-                        user.reputation += 2  # Reward for bad behavior
-                elif user.role == "White Hat":
-                    if user.overall_sentiment < 50:  # Bad behavior
-                        user.reputation -= 2  # Punish for bad behavior
-                    else:
-                        user.reputation += 2  # Reward for good behavior
-                elif user.role == "Grey Hat":
-                    if user.overall_sentiment > 50:  # Good behavior
-                        user.reputation -= 1  # Punish for good behavior
-                        user.reputation *= 1.5  # Apply multiplier for Grey Hat
-                    else:
-                        user.reputation -= 1  # Punish for bad behavior
-                        user.reputation *= 1.5  # Apply multiplier for Grey Hat
-
-                # Ensure reputation stays within bounds
-                user.reputation = max(0, min(user.reputation, 100))
-                logger.info(f"New Reputation for user: {user.username}, Updated Reputation: {user.reputation}")
-
-def get_user_reputation(user_id):
+def purge_old_messages(days_to_keep=30):
     with session_scope() as session:
-        user = session.query(UserEngagement).filter_by(user_id=user_id).first()
-        if user:
-            logger.info(f"Retrieved Reputation for User: {user.username}, Reputation: {user.reputation}")
-            return user.reputation
-        return None
+        cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
+        deleted = session.query(Message).filter(Message.created_at < cutoff_date).delete()
+        logger.info(f"Purged {deleted} messages older than {days_to_keep} days")
 
 async def periodic_summarization(agent_id, api_key, user_id):
     # This function should be implemented to periodically create summaries
@@ -157,76 +111,19 @@ async def periodic_summarization(agent_id, api_key, user_id):
 
 async def summarize_transcripts(transcripts):
     # This function should be implemented to create summaries from the provided transcripts
-    # It should use the OpenAI API to generate summaries
     pass
 
-def get_narrative_context():
-    # Retrieve relevant game lore or current narrative elements
-    return "Current events: Faction Wars are ongoing, and the ARI is guiding players through challenges."
+def analyze_sentiment(content):
+    # Implement a simple sentiment analysis function
+    # This is a placeholder implementation, you might want to use a more sophisticated method
+    positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic']
+    negative_words = ['bad', 'terrible', 'awful', 'horrible', 'disappointing', 'poor']
 
-def get_chat_history(user_id):
-    with session_scope() as session:
-        past_messages = session.query(Message).filter_by(user_id=user_id).order_by(Message.created_at.desc()).limit(5).all()
-        return " ".join(msg.content for msg in past_messages)
-
-def get_user_sentiment(user_id):
-    with session_scope() as session:
-        user = session.query(UserEngagement).filter_by(user_id=user_id).first()
-        return user.overall_sentiment if user else 0.0
-
-import discord
-import os
-
-# Create an instance of Intents
-intents = discord.Intents.default()
-intents.messages = True
-intents.guilds = True
-intents.members = True
-
-client = discord.Client(intents=intents)
-
-@client.event
-async def on_ready():
-    print(f'Logged in as {client.user}')
-
-@client.event
-async def on_message(message):
-    if message.content == '!shutdown':
-        await shutdown_bot()
-    elif message.content.startswith('/reputation'):
-        user_id = message.author.id
-        reputation = get_user_reputation(user_id)
-        if reputation is not None:
-            await message.channel.send(f"Your current reputation is: {reputation}")
-        else:
-            await message.channel.send("Could not retrieve your reputation.")
-    else:
-        # Handle other messages
-        ai_response = await generate_response_with_openai(message.content, message.author.id)
-        await message.channel.send(ai_response)
-
-async def shutdown_bot():
-    print("Shutting down...")
-    await client.close()
-
-async def run_discord_bot():
-    token = os.environ.get('DISCORD_TOKEN')
-    print(f"Using token: {token}")  # Debugging line
-    await client.start(token)
-
-import asyncio
-
-def main():
-    from discord_bot import run_discord_bot  # Import here to avoid circular import
-
-    # Create a new event loop
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    try:
-        loop.run_until_complete(run_discord_bot())
-    finally:
-        loop.close()
+    words = content.lower().split()
+    sentiment = sum(word in positive_words for word in words) - sum(word in negative_words for word in words)
+    return sentiment / len(words) if words else 0
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+
+    asyncio.run(main())
