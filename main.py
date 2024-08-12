@@ -14,7 +14,9 @@ from openai import AsyncOpenAI  # Changed to AsyncOpenAI
 from shared_utils import print_header, log_info, log_error
 from game_state_manager import GameStateManager  # Ensure this import is present
 from twitch_bot import run_twitch_bot  # Ensure this import is present
-from discord_bot import run_discord_bot  # Import the run_discord_bot function
+from discord.ext import commands
+from gameCommands import setup  # Import the setup function
+
 # Initialize colorama
 init(autoreset=True)
 
@@ -77,8 +79,14 @@ async def main():
     sync_task = asyncio.create_task(scheduled_sync())
     log_info("Scheduled sync task started")
 
-    # Start the Discord bot
-    discord_task = asyncio.create_task(run_discord_bot())
+    # Initialize the bot
+    bot = commands.Bot(command_prefix='!')
+
+    # Load the commands cog
+    await setup(bot)
+
+    # Start the bot
+    discord_task = asyncio.create_task(bot.start(os.environ['DISCORD_TOKEN']))
     log_info("Discord bot started")
 
     # Start the Twitch bot
