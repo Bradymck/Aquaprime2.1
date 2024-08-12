@@ -135,9 +135,20 @@ async def run_twitch_bot():
     finally:
         print_header("Aqua Prime Twitch Bot Shutdown")
 
+async def main():
+    try:
+        twitch_task = asyncio.create_task(run_twitch_bot())
+        await twitch_task
+    except asyncio.CancelledError:
+        logger.info("Main task cancelled, cancelling Twitch bot task.")
+        twitch_task.cancel()
+        await twitch_task  # Ensure the task is awaited after cancellation
+    except Exception as e:
+        logger.error(f"🚫 Unexpected error running Twitch bot: {e}")
+
 if __name__ == "__main__":
     print(f"\n{COLORS['header']}{'=' * 80}{COLORS['reset']}")
     print(f"{COLORS['header']}{'Aqua Prime Twitch Bot Starting':^80}{COLORS['reset']}")
     print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
 
-    asyncio.get_event_loop().run_until_complete(run_twitch_bot())
+    asyncio.run(main())
