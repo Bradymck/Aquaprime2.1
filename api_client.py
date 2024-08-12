@@ -3,7 +3,7 @@ import asyncio
 import logging
 import os
 from typing import List, Dict, Any, Optional
-from asynciolimiter import AsyncLimiter  # Corrected import statement
+from asynciolimiter import Limiter  # Corrected import statement
 from datetime import datetime
 from colorama import init, Fore, Back, Style
 import tracemalloc
@@ -54,7 +54,7 @@ PLAY_AI_USER_ID = os.getenv('PLAY_AI_USER_ID')
 AGENT_ID = os.getenv('AGENT_ID')
 
 # Rate limiter: 10 requests per second
-rate_limiter = AsyncLimiter(10, 1)
+rate_limiter = Limiter(10 / 1)  # Change to Limiter
 
 async def make_api_request(url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]] = None, max_retries: int = 3) -> Optional[Dict[str, Any]]:
     async with rate_limiter:

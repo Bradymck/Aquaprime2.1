@@ -5,11 +5,11 @@ import random
 from datetime import datetime
 from colorama import init, Fore, Style
 from database import init_db
-from openai import AsyncOpenAI  # Ensure this is AsyncOpenAI
+from openai import AsyncOpenAI
 from shared_utils import print_header, log_info
 from api_client import scheduled_sync
 from discord.ext import commands
-import aiofiles  # Add this import
+import aiofiles
 import signal
 
 # Initialize colorama
@@ -50,7 +50,7 @@ if missing_secrets:
 logger.info(f"Replit secrets set: {', '.join(required_secrets)}")
 
 # Initialize OpenAI client
-client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])  # Ensure this is AsyncOpenAI
+client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
 async def generate_response(prompt):
     try:
@@ -126,13 +126,7 @@ async def on_ready():
     logger.info(f'Logged in as {bot.user}')
     await setup()  # Load the commands cog when the bot is ready
 
-# Run the bot with your token
-bot.run(os.getenv('DISCORD_TOKEN'))
-
 # Add this function to log commands asynchronously
 async def log_command(command):
     async with aiofiles.open('game_commands.log', mode='a') as f:
         await f.write(f"{command}\n")
-
-# Example usage
-# await log_command(command)
