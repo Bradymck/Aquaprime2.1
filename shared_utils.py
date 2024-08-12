@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands as discord_commands
+from discord import app_commands  # Add this line
 import logging
 import os
 from colorama import init, Fore, Back, Style
@@ -44,3 +45,9 @@ class DiscordBot(discord_commands.Cog):
         if user_id not in self.conversations:
             # Create a new conversation ID and store it
             conversation_id = f"conv_{user_id}_{int(datetime.utcnow().timestamp())}"
+            self.conversations[user_id] = conversation_id
+            logger.info(f"Created new conversation ID for user {user_id}: {conversation_id}")
+        else:
+            conversation_id = self.conversations[user_id]
+
+        # The rest of your chat logic...
