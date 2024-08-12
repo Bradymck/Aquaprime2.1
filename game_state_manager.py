@@ -6,6 +6,7 @@ class GameStateManager:
         self.repo_path = repo_path
         self.file_path = file_path
         self.game_state = self.load_game_state()
+        self.knowledge_base = {}  # Initialize knowledge base
 
     def load_game_state(self):
         try:
@@ -14,9 +15,26 @@ class GameStateManager:
         except FileNotFoundError:
             return {}
 
+    def add_knowledge(self, key, value):
+        self.knowledge_base[key] = value
+
+    def get_knowledge(self, key):
+        return self.knowledge_base.get(key, None)
+
+    def remove_knowledge(self, key):
+        if key in self.knowledge_base:
+            del self.knowledge_base[key]
+
+    def clear_knowledge(self):
+        self.knowledge_base.clear()
+
+    def list_knowledge_entries(self):
+        return self.knowledge_base.items()
+
     def summarize_transcript(self, transcript):
         # Implement your summarization logic here
         summary = "Summary of the transcript"  # Placeholder
+        self.add_knowledge(transcript['id'], summary)  # Store summary in knowledge base
         return summary
 
     async def update_agent(self, agent_id, data):
