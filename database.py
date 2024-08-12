@@ -1,7 +1,8 @@
 import logging
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import QueuePool
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON  # Add this line
 from contextlib import asynccontextmanager
 from datetime import datetime
 from colorama import init, Fore, Style
@@ -100,13 +101,10 @@ def init_db():
     logger.info("Database initialized")
 
 def get_latest_summary():
-    # Implement logic to retrieve the most recent summary from the database
-    pass
+    pass  # Implement logic to retrieve the most recent summary from the database
 
 def get_relevant_summary(query):
-    # Implement logic to find a summary relevant to the given query
-    pass
-
+    pass  # Implement logic to find a summary relevant to the given query
 
 print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
 logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Database Initialized{Style.RESET_ALL}")
