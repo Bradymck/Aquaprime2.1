@@ -3,7 +3,7 @@ import asyncio
 import logging
 import os
 from typing import List, Dict, Any, Optional
-from async_limiter import AsyncLimiter
+from asynciolimiter import AsyncLimiter  # Corrected import statement
 from datetime import datetime
 from colorama import init, Fore, Back, Style
 import tracemalloc
