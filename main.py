@@ -50,6 +50,7 @@ if missing_secrets:
 logger.info(f"Replit secrets set: {', '.join(required_secrets)}")
 
 # Initialize OpenAI client
+
 client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
 async def generate_response(prompt):

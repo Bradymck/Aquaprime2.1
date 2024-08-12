@@ -1,7 +1,6 @@
 import logging
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
-from sqlalchemy.pool import QueuePool
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -83,16 +82,6 @@ class AgentMemory(Base):
     critical_knowledge = Column(JSON)
     last_updated = Column(DateTime, default=datetime.utcnow)
 
-class Conversation(Base):
-    __tablename__ = 'conversations'
-    id = Column(Integer, primary_key=True)
-    conversation_id = Column(String, unique=True)
-    agent_id = Column(String)
-    start_time = Column(DateTime)
-    end_time = Column(DateTime)
-    summary = Column(String)
-    messages = relationship("ConversationMessage", order_by=ConversationMessage.timestamp, back_populates="conversation")
-
 class ConversationMessage(Base):
     __tablename__ = 'conversation_messages'
     id = Column(Integer, primary_key=True)
@@ -101,6 +90,16 @@ class ConversationMessage(Base):
     content = Column(String)
     timestamp = Column(DateTime)
     conversation = relationship("Conversation", back_populates="messages")
+
+class Conversation(Base):
+    __tablename__ = 'conversations'
+    id = Column(Integer, primary_key=True)
+    conversation_id = Column(String, unique=True)
+    agent_id = Column(String)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    summary = Column(String)
+    messages = relationship("ConversationMessage", order_by="ConversationMessage.timestamp", back_populates="conversation")
 
 print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
 logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Database Initialized{Style.RESET_ALL}")

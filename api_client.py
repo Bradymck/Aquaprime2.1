@@ -13,8 +13,6 @@ tracemalloc.start()
 import aiofiles
 from sqlalchemy import select
 
-from database import session_scope, Conversation, ConversationMessage
-
 # Initialize colorama
 init(autoreset=True)
 
