@@ -16,7 +16,7 @@ def analyze_sentiment(text):
     blob = TextBlob(text)
     return blob.sentiment.polarity
 
-async def generate_response_with_openai(prompt):
+async def generate_response_with_openai(prompt, user_id):
     try:
         # Log the prompt here as well for redundancy
         logger.info(f"Sending prompt to OpenAI: {prompt}")
@@ -24,11 +24,24 @@ async def generate_response_with_openai(prompt):
         # Highlight the prompt in orange
         print(f"{Fore.LIGHTYELLOW_EX}Prompt being sent to OpenAI:\n{prompt}{Fore.RESET}")
 
+        # Construct a more contextual prompt
+        user_context = get_user_context(user_id)  # Function to retrieve user-specific context
+        narrative_context = get_narrative_context()  # Function to retrieve relevant game lore
+
+        full_prompt = (
+            f"System Instructions: You are the AI game master (ARI) in Aqua Prime, a TTRPG. "
+            f"Based on the user's previous messages and preferences, provide a response that "
+            f"incorporates their interests and the current narrative context. "
+            f"User Context: {user_context}\n"
+            f"Narrative Context: {narrative_context}\n"
+            f"User Message: {prompt}"
+        )
+
         response = await client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": full_prompt}
             ]
         )
         return response.choices[0].message.content.strip()
@@ -57,7 +70,7 @@ async def process_message_with_context(content, user_id, platform, conversation_
     # Log the prompt here
     logger.info(f"Prompt being sent to OpenAI: {prompt}")
 
-    ai_response = await generate_response_with_openai(prompt)
+    ai_response = await generate_response_with_openai(prompt, user_id)
     return ai_response
 
 async def save_message(content, platform, user_id, username):
@@ -114,3 +127,15 @@ async def summarize_transcripts(transcripts):
     # This function should be implemented to create summaries from the provided transcripts
     # It should use the OpenAI API to generate summaries
     pass
+
+def get_user_context(user_id):
+    # Retrieve user preferences and past interactions from the database
+    with session_scope() as session:
+        user = session.query(UserEngagement).filter_by(user_id=user_id).first()
+        if user:
+            return f"User's favorite foods: {user.favorite_foods}, Interests: {user.interests}"
+    return "No specific user context available."
+
+def get_narrative_context():
+    # Retrieve relevant game lore or current narrative elements
+    return "Current events: Faction Wars are ongoing, and the user has shown interest in the ARI's guidance."
