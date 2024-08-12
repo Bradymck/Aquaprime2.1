@@ -200,6 +200,10 @@ async def on_message(message):
             await message.channel.send(f"Your current reputation is: {reputation}")
         else:
             await message.channel.send("Could not retrieve your reputation.")
+    else:
+        # Handle other messages
+        ai_response = await generate_response_with_openai(message.content, message.author.id)
+        await message.channel.send(ai_response)
 
 async def shutdown_bot():
     print("Shutting down...")
