@@ -125,10 +125,10 @@ async def scheduled_sync():
             update_count = 0
             message_count = 0
 
-            async with session_scope() as session:  # Ensure this is an async context manager
+            async with session_scope() as session:
                 for conv in conversations:
                     try:
-                        existing_conv = session.query(Conversation).filter_by(conversation_id=conv['id']).first()
+                        existing_conv = await session.execute(select(Conversation).filter_by(conversation_id=conv['id'])).scalar_one_or_none()
                         if existing_conv is None:
                             new_conv = Conversation(
                                 conversation_id=conv['id'],
@@ -158,6 +158,7 @@ async def scheduled_sync():
                     except Exception as e:
                         logger.error(f"Sync error: {str(e)}")
 
+            logger.info(f"Sync complete. New conversations: {new_count}, Updated: {update_count}, Messages: {message_count}")
             await asyncio.sleep(300)
 
     except asyncio.CancelledError:

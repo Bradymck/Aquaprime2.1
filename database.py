@@ -2,7 +2,7 @@ import logging
 from sqlalchemy import create_engine, Column, DateTime, Float, Integer, String, JSON, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import QueuePool
-from contextlib import contextmanager
+from contextlib import contextmanager, asynccontextmanager
 from datetime import datetime
 from colorama import init, Fore, Style
 import random
@@ -85,18 +85,17 @@ class ConversationMessage(Base):
 
 Conversation.messages = relationship("ConversationMessage", order_by=ConversationMessage.timestamp, back_populates="conversation")
 
-@contextmanager
-def session_scope():
+@asynccontextmanager
+async def session_scope():
     session = SessionMaker()
     try:
         yield session
-        session.commit()
+        await session.commit()
     except Exception as e:
-        session.rollback()
-        logger.error(f"Database error: {str(e)}")
-        raise
+        await session.rollback()
+        raise e
     finally:
-        session.close()
+        await session.close()
 
 def init_db():
     Base.metadata.create_all(engine)
@@ -109,6 +108,7 @@ def get_latest_summary():
 def get_relevant_summary(query):
     # Implement logic to find a summary relevant to the given query
     pass
+
 
 print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
 logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Database Initialized{Style.RESET_ALL}")
