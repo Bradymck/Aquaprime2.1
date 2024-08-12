@@ -141,3 +141,5 @@ if __name__ == "__main__":
     print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
 
     asyncio.get_event_loop().run_until_complete(run_twitch_bot())
+    async def run_twitch_bot():
+    # Implementation of the Twitch bot

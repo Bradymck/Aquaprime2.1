@@ -13,7 +13,7 @@ from api_client import scheduled_sync
 from openai import AsyncOpenAI  # Changed to AsyncOpenAI
 from shared_utils import print_header, log_info, log_error
 from game_state_manager import GameStateManager  # Ensure this import is present
-
+from twitch_bot import run_twitch_bot  # Ensure this import is present
 # Initialize colorama
 init(autoreset=True)
 
