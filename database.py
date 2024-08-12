@@ -86,6 +86,8 @@ class ConversationMessage(Base):
 
 Conversation.messages = relationship("ConversationMessage", order_by=ConversationMessage.timestamp, back_populates="conversation")
 
+from contextlib import asynccontextmanager
+
 @asynccontextmanager
 async def session_scope():
     async with AsyncSessionMaker() as session:

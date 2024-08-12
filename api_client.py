@@ -128,36 +128,32 @@ async def scheduled_sync():
             update_count = 0
             message_count = 0
 
-            with session_scope() as cursor:
+            async with session_scope() as session:
                 for conv in conversations:
                     try:
-                        cursor.execute("SELECT * FROM conversations WHERE conversation_id = ?", (conv['id'],))
-                        existing_conv = cursor.fetchone()
+                        result = await session.execute(select(Conversation).filter_by(conversation_id=conv['id']))
+                        existing_conv = result.scalar_one_or_none()
                         if existing_conv is None:
-                            cursor.execute('''
-                                INSERT INTO conversations (conversation_id, agent_id, start_time, end_time, summary)
-                                VALUES (?, ?, ?, ?, ?)
-                            ''', (
-                                conv['id'],
-                                AGENT_ID,
-                                datetime.fromisoformat(conv['startedAt'].replace('Z', '+00:00')),
-                                datetime.fromisoformat(conv['endedAt'].replace('Z', '+00:00')) if conv['endedAt'] else None,
-                                conv.get('summary', '')
-                            ))
+                            new_conv = Conversation(
+                                conversation_id=conv['id'],
+                                agent_id=AGENT_ID,
+                                start_time=datetime.fromisoformat(conv['startedAt'].replace('Z', '+00:00')),
+                                end_time=datetime.fromisoformat(conv['endedAt'].replace('Z', '+00:00')) if conv['endedAt'] else None,
+                                summary=conv.get('summary', '')
+                            )
+                            session.add(new_conv)
                             new_count += 1
 
                             messages = await fetch_conversation_transcript(conv['id'])
                             for msg in messages:
                                 if 'content' in msg:
-                                    cursor.execute('''
-                                        INSERT INTO conversation_messages (conversation_id, role, content, timestamp)
-                                        VALUES (?, ?, ?, ?)
-                                    ''', (
-                                        conv['id'],
-                                        msg['role'],
-                                        msg['content'],
-                                        datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
-                                    ))
+                                    new_msg = ConversationMessage(
+                                        conversation_id=conv['id'],
+                                        role=msg['role'],
+                                        content=msg['content'],
+                                        timestamp=datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
+                                    )
+                                    session.add(new_msg)
                                 else:
                                     logger.error(f"Message does not contain 'content': {msg}")
                             message_count += len(messages)
@@ -173,7 +169,6 @@ async def scheduled_sync():
         logger.info("Scheduled sync task was cancelled.")
     except Exception as e:
         logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
-
 async def run_sync():
     while True:
         try:
