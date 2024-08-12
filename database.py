@@ -87,15 +87,13 @@ Conversation.messages = relationship("ConversationMessage", order_by=Conversatio
 
 @asynccontextmanager
 async def session_scope():
-    session = SessionMaker()
-    try:
-        yield session
-        await session.commit()
-    except Exception as e:
-        await session.rollback()
-        raise e
-    finally:
-        await session.close()
+    async with AsyncSessionMaker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception as e:
+            await session.rollback()
+            raise e
 
 def init_db():
     Base.metadata.create_all(engine)

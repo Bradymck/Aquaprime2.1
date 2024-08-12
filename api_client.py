@@ -128,32 +128,36 @@ async def scheduled_sync():
             update_count = 0
             message_count = 0
 
-            async with session_scope() as session:
+            with session_scope() as cursor:
                 for conv in conversations:
                     try:
-                        existing_conv = await session.execute(select(Conversation).filter_by(conversation_id=conv['id']))
-                        existing_conv = existing_conv.scalar_one_or_none()
+                        cursor.execute("SELECT * FROM conversations WHERE conversation_id = ?", (conv['id'],))
+                        existing_conv = cursor.fetchone()
                         if existing_conv is None:
-                            new_conv = Conversation(
-                                conversation_id=conv['id'],
-                                agent_id=AGENT_ID,
-                                start_time=datetime.fromisoformat(conv['startedAt'].replace('Z', '+00:00')),
-                                end_time=datetime.fromisoformat(conv['endedAt'].replace('Z', '+00:00')) if conv['endedAt'] else None,
-                                summary=conv.get('summary', '')
-                            )
-                            session.add(new_conv)
+                            cursor.execute('''
+                                INSERT INTO conversations (conversation_id, agent_id, start_time, end_time, summary)
+                                VALUES (?, ?, ?, ?, ?)
+                            ''', (
+                                conv['id'],
+                                AGENT_ID,
+                                datetime.fromisoformat(conv['startedAt'].replace('Z', '+00:00')),
+                                datetime.fromisoformat(conv['endedAt'].replace('Z', '+00:00')) if conv['endedAt'] else None,
+                                conv.get('summary', '')
+                            ))
                             new_count += 1
 
                             messages = await fetch_conversation_transcript(conv['id'])
                             for msg in messages:
                                 if 'content' in msg:
-                                    new_msg = ConversationMessage(
-                                        conversation_id=conv['id'],
-                                        role=msg['role'],
-                                        content=msg['content'],
-                                        timestamp=datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
-                                    )
-                                    session.add(new_msg)
+                                    cursor.execute('''
+                                        INSERT INTO conversation_messages (conversation_id, role, content, timestamp)
+                                        VALUES (?, ?, ?, ?)
+                                    ''', (
+                                        conv['id'],
+                                        msg['role'],
+                                        msg['content'],
+                                        datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
+                                    ))
                                 else:
                                     logger.error(f"Message does not contain 'content': {msg}")
                             message_count += len(messages)
