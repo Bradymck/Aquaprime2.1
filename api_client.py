@@ -142,6 +142,7 @@ async def scheduled_sync():
                                 summary=conv.get('summary', '')
                             )
                             session.add(new_conv)
+                            await session.flush()
                             new_count += 1
 
                             messages = await fetch_conversation_transcript(conv['id'])
@@ -169,6 +170,7 @@ async def scheduled_sync():
         logger.info("Scheduled sync task was cancelled.")
     except Exception as e:
         logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
+
 async def run_sync():
     while True:
         try:

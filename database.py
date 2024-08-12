@@ -1,8 +1,8 @@
 import logging
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import QueuePool
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON  # Add this line
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON
 from contextlib import asynccontextmanager
 from datetime import datetime
 from colorama import init, Fore, Style
@@ -31,8 +31,25 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 Base = declarative_base()
-engine = create_async_engine('sqlite+aiosqlite:///unified_chat_memory.db')
-AsyncSessionMaker = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+engine = create_async_engine('sqlite+aiosqlite:///unified_chat_memory.db', echo=True)
+AsyncSessionMaker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+@asynccontextmanager
+async def session_scope():
+    async with AsyncSessionMaker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception as e:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database initialized")
 
 class Message(Base):
     __tablename__ = 'messages'
@@ -85,29 +102,6 @@ class ConversationMessage(Base):
     conversation = relationship("Conversation", back_populates="messages")
 
 Conversation.messages = relationship("ConversationMessage", order_by=ConversationMessage.timestamp, back_populates="conversation")
-
-from contextlib import asynccontextmanager
-
-@asynccontextmanager
-async def session_scope():
-    async with AsyncSessionMaker() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception as e:
-            await session.rollback()
-            raise e
-
-async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database initialized")
-
-def get_latest_summary():
-    pass  # Implement logic to retrieve the most recent summary from the database
-
-def get_relevant_summary(query):
-    pass  # Implement logic to find a summary relevant to the given query
 
 print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
 logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Database Initialized{Style.RESET_ALL}")
