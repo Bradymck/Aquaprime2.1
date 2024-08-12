@@ -82,8 +82,8 @@ async def generate_response(prompt):
 
 
 async def run_discord_bot():
-    from discord_bot import run_discord_bot
-    await run_discord_bot()
+    from discord_bot import bot
+    await bot.start(os.getenv('DISCORD_TOKEN'))
 
 
 async def main():
