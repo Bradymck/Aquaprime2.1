@@ -8,7 +8,7 @@ from discord.ext import commands as discord_commands
 from colorama import init, Fore, Back, Style
 from database import session_scope, UserEngagement
 from utils import process_message_with_context, save_message, get_relevant_summary
-from api_client import update_agent_knowledge, fetch_recent_conversations, update_agent
+from api_client import update_agent_knowledge, fetch_recent_conversations
 from game_state_manager import GameStateManager
 from shared_utils import logger
 from kb_manager import KBManager

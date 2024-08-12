@@ -231,5 +231,9 @@ async def update_agent_knowledge(agent_id, data):
     # Implementation for updating agent knowledge
     pass
 
+def update_agent(agent_id, data):
+    # Implementation for updating agent information
+    pass
+
 if __name__ == "__main__":
     asyncio.run(start_scheduled_sync())
