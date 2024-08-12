@@ -71,8 +71,8 @@ class DiscordBot(discord_commands.Cog):
 async def on_ready():
     discord_cog = DiscordBot(bot)
     await bot.add_cog(discord_cog)
+    await bot.tree.sync()  # Sync the command tree
     logger.info("Aqua Prime Discord Bot Starting")
-logger.info(f"Available commands: {[command.name for command in bot.tree.get_commands()]}")
 
 async def run_discord_bot():
     try:
