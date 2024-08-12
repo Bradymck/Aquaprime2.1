@@ -10,6 +10,9 @@ from colorama import Fore  # Ensure colorama is imported
 logger = logging.getLogger(__name__)
 
 # Initialize OpenAI client
+token = os.environ.get('OPENAI_API_KEY')
+if not token:
+    logger.error("OpenAI API key is not set.")
 client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
 def analyze_sentiment(text):
@@ -20,7 +23,6 @@ def analyze_sentiment(text):
 async def generate_response_with_openai(prompt, user_id):
     try:
         logger.info(f"Sending prompt to OpenAI: {prompt}")
-
         print(f"{Fore.LIGHTYELLOW_EX}Prompt being sent to OpenAI:\n{prompt}{Fore.RESET}")
 
         narrative_context = get_narrative_context()
@@ -48,6 +50,7 @@ async def generate_response_with_openai(prompt, user_id):
                 {"role": "user", "content": full_prompt}
             ]
         )
+        logger.info(f"OpenAI response: {response}")
         return response.choices[0].message.content.strip()
     except Exception as e:
         logger.error(f"Error communicating with OpenAI API: {str(e)}")
