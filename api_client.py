@@ -227,5 +227,9 @@ def get_relevant_summary(session, query):
         return relevant_conversation.summary
     return None
 
+async def update_agent_knowledge(agent_id, data):
+    # Implementation for updating agent knowledge
+    pass
+
 if __name__ == "__main__":
     asyncio.run(start_scheduled_sync())

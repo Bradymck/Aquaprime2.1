@@ -10,6 +10,7 @@ from colorama import init, Fore, Style
 from discord_bot import run_discord_bot
 from twitch_bot import run_twitch_bot
 from database import init_db
+init_db()  # Ensure the database is initialized
 from api_client import scheduled_sync
 from openai import OpenAI  # Changed from AsyncOpenAI to OpenAI
 from shared_utils import print_header, log_info, log_error, log_warning, generate_response

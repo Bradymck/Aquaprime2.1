@@ -15,7 +15,8 @@ from kb_manager import KBManager
 from datetime import datetime
 import json
 import traceback
-
+from discord import Intents
+import asyncio
 
 init(autoreset=True)
 
@@ -57,6 +58,7 @@ class DiscordBot(discord_commands.Cog):
             await save_message(message, 'discord', user_id, interaction.user.name)
             logger.info(f"Chat with user {user_id} successful")
 
+            from api_client import update_agent_knowledge  # Move import here
             await update_agent_knowledge(os.getenv('AGENT_ID'), {"question": message, "answer": ai_response})
 
             new_memory = {"timestamp": str(datetime.now()), "description": f"User: {message}, AI: {ai_response}"}
@@ -64,7 +66,7 @@ class DiscordBot(discord_commands.Cog):
 
         except Exception as e:
             logger.error(f"Chat error for user {user_id}: {e}")
-            await interaction.response.send_message("Error.", ephemeral=True)
+            await interaction.response.send_message("An error occurred while processing your request.", ephemeral=True)
 
 @bot.event
 async def on_ready():

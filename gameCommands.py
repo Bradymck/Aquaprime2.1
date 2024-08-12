@@ -5,8 +5,6 @@ import signal
 import random
 from datetime import datetime
 from colorama import init, Fore, Style
-from discord_bot import run_discord_bot
-from twitch_bot import run_twitch_bot
 from database import init_db
 from api_client import scheduled_sync
 from openai import AsyncOpenAI
@@ -72,10 +70,7 @@ async def main():
 
     # Import the run functions here to avoid circular imports
     from discord_bot import run_discord_bot
-    # from twitch_bot import run_twitch_bot  # Uncomment if you have a Twitch bot
-
     await run_discord_bot()
-    # await run_twitch_bot()  # Uncomment if you have a Twitch bot
 
 def signal_handler():
     logger.info("Received shutdown signal. Closing bots...")
