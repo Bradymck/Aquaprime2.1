@@ -29,6 +29,12 @@ COLORS = {
 # Initialize OpenAI client
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # Use AsyncOpenAI
 
+# Create the bot instance
+intents = discord.Intents.default()
+intents.message_content = True  # Ensure you have the right intents
+discord_bot = discord_commands.Bot(command_prefix="!", intents=intents)
+
+# Your DiscordBot class and other commands go here
 class DiscordBot(discord_commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -51,3 +57,21 @@ class DiscordBot(discord_commands.Cog):
             conversation_id = self.conversations[user_id]
 
         # The rest of your chat logic...
+
+# Register the DiscordBot cog
+discord_bot.add_cog(DiscordBot(discord_bot))
+
+@discord_bot.event
+async def on_ready():
+    logger.info(f'Logged in as {discord_bot.user.name} (ID: {discord_bot.user.id})')
+    logger.info('------')
+
+async def run_discord_bot():
+    try:
+        await discord_bot.start(os.environ['DISCORD_TOKEN'])
+    except Exception as e:
+        logger.error(f"Error starting the bot: {e}")
+
+if __name__ == "__main__":
+    print_header("Aqua Prime Discord Bot Starting")
+    asyncio.run(run_discord_bot())
