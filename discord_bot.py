@@ -69,7 +69,7 @@ async def run_discord_bot():
     try:
         await bot.start(os.environ['DISCORD_TOKEN'])
     except Exception as e:
-        logger.error(f"Error starting the bot: {e}")
+        logger.error(f"Error starting the Discord bot: {e}")
 
 if __name__ == "__main__":
     asyncio.run(run_discord_bot())

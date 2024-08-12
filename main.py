@@ -14,6 +14,7 @@ from openai import AsyncOpenAI  # Changed to AsyncOpenAI
 from shared_utils import print_header, log_info, log_error
 from game_state_manager import GameStateManager  # Ensure this import is present
 from twitch_bot import run_twitch_bot  # Ensure this import is present
+from discord_bot import run_discord_bot  # Import the run_discord_bot function
 # Initialize colorama
 init(autoreset=True)
 
@@ -113,8 +114,3 @@ if __name__ == "__main__":
         print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
         logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Shutdown Complete{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
-
-from discord_bot import run_discord_bot
-
-if __name__ == "__main__":
-    asyncio.run(main())
