@@ -110,18 +110,33 @@ def update_user_reputations():
         for user in users:
             if (datetime.utcnow() - user.last_active) <= timedelta(days=7):
                 logger.info(f"Updating reputation for user: {user.username}, Role: {user.role}, Sentiment: {user.overall_sentiment}, Current Reputation: {user.reputation}")
-                
+
                 # Ensure reputation is initialized
                 if user.reputation is None:
                     user.reputation = 50  # Set a default value if not initialized
 
-                # Log before updating reputation
-                logger.info(f"Before Update - User: {user.username}, Reputation: {user.reputation}")
+                # Reputation update logic based on role
+                if user.role == "Black Hat":
+                    if user.overall_sentiment > 50:  # Good behavior
+                        user.reputation -= 2  # Punish for good behavior
+                    else:
+                        user.reputation += 2  # Reward for bad behavior
+                elif user.role == "White Hat":
+                    if user.overall_sentiment < 50:  # Bad behavior
+                        user.reputation -= 2  # Punish for bad behavior
+                    else:
+                        user.reputation += 2  # Reward for good behavior
+                elif user.role == "Grey Hat":
+                    if user.overall_sentiment > 50:  # Good behavior
+                        user.reputation -= 1  # Punish for good behavior
+                        user.reputation *= 1.5  # Apply multiplier for Grey Hat
+                    else:
+                        user.reputation -= 1  # Punish for bad behavior
+                        user.reputation *= 1.5  # Apply multiplier for Grey Hat
 
-                # Reputation update logic...
-                
-                # Log after updating reputation
-                logger.info(f"After Update - User: {user.username}, Reputation: {user.reputation}")
+                # Ensure reputation stays within bounds
+                user.reputation = max(0, min(user.reputation, 100))
+                logger.info(f"New Reputation for user: {user.username}, Updated Reputation: {user.reputation}")
 
 def get_user_reputation(user_id):
     with session_scope() as session:
@@ -174,6 +189,13 @@ async def on_ready():
 async def on_message(message):
     if message.content == '!shutdown':
         await shutdown_bot()
+    elif message.content.startswith('/reputation'):
+        user_id = message.author.id
+        reputation = get_user_reputation(user_id)
+        if reputation is not None:
+            await message.channel.send(f"Your current reputation is: {reputation}")
+        else:
+            await message.channel.send("Could not retrieve your reputation.")
 
 async def shutdown_bot():
     print("Shutting down...")
