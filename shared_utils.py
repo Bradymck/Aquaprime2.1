@@ -34,3 +34,7 @@ def log_warning(message):
 
 def log_error(message):
     logger.error(f"{COLORS['error']}{message}{COLORS['reset']}")
+
+async def generate_response(prompt):
+    # Implementation for generating a response
+    pass
