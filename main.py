@@ -113,3 +113,8 @@ if __name__ == "__main__":
         print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
         logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Shutdown Complete{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
+
+from discord_bot import run_discord_bot
+
+if __name__ == '__main__':
+    asyncio.run(run_discord_bot())

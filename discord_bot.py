@@ -74,6 +74,7 @@ async def on_ready():
     await bot.add_cog(discord_cog)
     logger.info("Aqua Prime Discord Bot Starting")
 logger.info(f"Available commands: {[command.name for command in bot.tree.get_commands()]}")
+
 async def run_discord_bot():
     try:
         await bot.start(os.environ['DISCORD_TOKEN'])
