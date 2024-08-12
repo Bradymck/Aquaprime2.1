@@ -100,10 +100,11 @@ async def scheduled_sync():
             update_count = 0
             message_count = 0
 
-            async for session in session_scope():
+            async with session_scope() as session:
                 for conv in conversations:
                     try:
-                        existing_conv = (await session.execute(select(Conversation).filter_by(conversation_id=conv['id']))).scalar()
+                        existing_conv = await session.execute(select(Conversation).filter_by(conversation_id=conv['id']))
+                        existing_conv = existing_conv.scalar_one_or_none()
                         if existing_conv is None:
                             new_conv = Conversation(
                                 conversation_id=conv['id'],
@@ -113,6 +114,7 @@ async def scheduled_sync():
                                 summary=conv.get('summary', '')
                             )
                             session.add(new_conv)
+                            await session.flush()
                             new_count += 1
 
                             messages = await fetch_conversation_transcript(conv['id'])
@@ -132,6 +134,8 @@ async def scheduled_sync():
                             update_count += 1
                     except Exception as e:
                         logger.error(f"Sync error: {str(e)}")
+
+                await session.commit()
 
             logger.info(f"Sync complete. New conversations: {new_count}, Updated: {update_count}, Messages: {message_count}")
             await asyncio.sleep(300)
