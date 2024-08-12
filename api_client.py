@@ -7,7 +7,6 @@ from aiolimiter import AsyncLimiter
 from datetime import datetime
 from sqlalchemy import desc
 from colorama import init, Fore, Back, Style
-import random
 import tracemalloc
 tracemalloc.start()
 
@@ -121,6 +120,9 @@ async def scheduled_sync():
         print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
 
         conversations = await fetch_recent_conversations()
+        if not conversations:  # Handle empty conversations
+            logger.info("No new conversations to sync.")
+            return
 
         new_count = 0
         update_count = 0
@@ -174,9 +176,8 @@ async def scheduled_sync():
 
         print(f"\n{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
 
-    except GeneratorExit:
-        # Handle cleanup if necessary
-        pass
+    except Exception as e:
+        logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
 
 async def test_api_connection() -> bool:
     url = f"{PLAY_AI_API_URL}/agents/{AGENT_ID}/conversations"

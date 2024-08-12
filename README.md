@@ -28,7 +28,18 @@ _Aqua Prime_ is an integrated bot suite designed to enhance online community int
 ## 🚀 Getting Started
 
 ### Prerequisites
-Ensure you have all required environment variables: `DISCORD_TOKEN`, `DISCORD_GUILD_ID`, `TWITCH_IRC_TOKEN`, `TWITCH_CLIENT_ID`, `TWITCH_CHANNEL`, `TWITCH_NICK`, `OPENAI_API_KEY`.
+Ensure you have all required environment variables set:
+- `DISCORD_TOKEN`: Token for Discord bot.
+- `DISCORD_GUILD_ID`: ID of the Discord guild.
+- `TWITCH_IRC_TOKEN`: Token for Twitch bot.
+- `TWITCH_CLIENT_ID`: Client ID for Twitch API.
+- `TWITCH_CHANNEL`: Channel to connect to on Twitch.
+- `TWITCH_NICK`: Nickname for the Twitch bot.
+- `OPENAI_API_KEY`: API key for OpenAI.
+- `PLAY_AI_API_KEY`: API key for Play AI.
+- `PLAY_AI_USER_ID`: User ID for Play AI.
+- `AGENT_ID`: ID of the agent for Play AI.
+- `PLAY_AI_API_URL`: Base URL for Play AI API.
 
 ### Running the Bots
 #### Discord Bot:

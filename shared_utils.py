@@ -7,8 +7,6 @@ init(autoreset=True)
 # Set up logger
 logger = logging.getLogger('UnifiedBot')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-def log_error(message):
-    logger.error(f"{Fore.RED}{message}{Back.RESET}")
 
 # Expanded COLORS dictionary
 COLORS = {

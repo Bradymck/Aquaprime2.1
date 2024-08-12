@@ -1,5 +1,5 @@
 import json
-import requests
+import aiohttp
 
 class GameStateManager:
     def __init__(self, repo_path, file_path):
@@ -19,13 +19,14 @@ class GameStateManager:
         summary = "Summary of the transcript"  # Placeholder
         return summary
 
-    def update_agent(self, agent_id, data):
+    async def update_agent(self, agent_id, data):
         url = f"https://api.play.ai/v1/agents/{agent_id}"
-        response = requests.patch(url, json=data)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise Exception(f"Failed to update agent: {response.text}")
+        async with aiohttp.ClientSession() as session:
+            async with session.patch(url, json=data) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    raise Exception(f"Failed to update agent: {await response.text()}")
 
     def save_game_state(self):
         with open(self.file_path, 'w') as file:
