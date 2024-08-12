@@ -1,5 +1,6 @@
 import logging
-from sqlalchemy import create_engine, Column, DateTime, Float, Integer, String, JSON, ForeignKey
+from sqlalchemy import Column, DateTime, Float, Integer, String, JSON, ForeignKey
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import QueuePool
 from contextlib import contextmanager
