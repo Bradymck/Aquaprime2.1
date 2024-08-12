@@ -58,6 +58,7 @@ class Message(Base):
     sentiment = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
 class UserEngagement(Base):
     __tablename__ = 'user_engagement'
     user_id = Column(String, primary_key=True)

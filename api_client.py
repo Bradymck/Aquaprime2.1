@@ -86,6 +86,7 @@ async def fetch_conversation_transcript(conversation_id: str) -> Optional[List[D
 
     return await make_api_request(url, headers)
 
+
 async def scheduled_sync():
     try:
         while True:
