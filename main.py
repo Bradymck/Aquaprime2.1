@@ -98,11 +98,11 @@ async def main():
     # Start the scheduled sync task
     sync_task = asyncio.create_task(scheduled_sync())
 
-    # Import and run the Discord bot
-    await run_discord_bot()
+    # Run the Discord bot
+    discord_task = asyncio.create_task(run_discord_bot())
 
-    # Wait for sync task to complete (it should run indefinitely unless there's an error)
-    await sync_task
+    # Wait for both tasks to complete
+    await asyncio.gather(sync_task, discord_task)
 
 
 def signal_handler():
