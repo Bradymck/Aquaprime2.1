@@ -5,31 +5,17 @@ import asyncio
 from colorama import Fore, Style
 from utils import process_message_with_context, save_message, get_relevant_summary
 from shared_utils import logger, print_header, COLORS
+from asynciolimiter import AsyncLimiter  # Import AsyncLimiter
+
 # Aqua Prime themed emojis
 AQUA_EMOJIS = ["🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"]
 required_env_vars = [
     'TWITCH_IRC_TOKEN', 'TWITCH_CLIENT_ID', 'TWITCH_CHANNEL', 'TWITCH_NICK',
     'PLAY_AI_API_KEY', 'PLAY_AI_USER_ID', 'AGENT_ID', 'PLAY_AI_API_URL', 'OPENAI_API_KEY'
 ]
-import aiofiles  # Add this import
 
-class RateLimiter:
-    def __init__(self, rate, per):
-        self.rate = rate
-        self.per = per
-        self.allowance = rate
-        self.last_check = asyncio.get_event_loop().time()
-    async def is_allowed(self):
-        current = asyncio.get_event_loop().time()
-        time_passed = current - self.last_check
-        self.last_check = current
-        self.allowance += time_passed * (self.rate / self.per)
-        if self.allowance > self.rate:
-            self.allowance = self.rate
-        if self.allowance < 1:
-            return False
-        self.allowance -= 1
-        return True
+# Rate limiter: 5 commands per minute
+rate_limiter = AsyncLimiter(5, 60)
 
 class Bot(commands.Bot):
     def __init__(self):
@@ -45,7 +31,6 @@ class Bot(commands.Bot):
             prefix='!',
             initial_channels=[os.getenv('TWITCH_CHANNEL')]
         )
-        self.rate_limiter = RateLimiter(rate=5, per=60)  # 5 commands per minute
         self.conversations = {}
 
     async def event_ready(self):
@@ -65,30 +50,26 @@ class Bot(commands.Bot):
 
     @commands.command(name="chat")
     async def chat_command(self, ctx: commands.Context, *, message: str):
-        if not await self.rate_limiter.is_allowed():
-            await ctx.send("⏳ You're sending commands too quickly. Please wait a moment.")
-            return
+        async with rate_limiter:  # Use the rate limiter
+            user_id = str(ctx.author.id)
+            conversation_id = self.conversations.get(user_id)
 
-        user_id = str(ctx.author.id)
-        conversation_id = self.conversations.get(user_id)
+            try:
+                relevant_summary = get_relevant_summary(user_id)
+                summary_context = f"Recent story summary: {relevant_summary}" if relevant_summary else "No recent story summary available."
 
-        try:
-            relevant_summary = get_relevant_summary(user_id)
-            summary_context = f"Recent story summary: {relevant_summary}" if relevant_summary else "No recent story summary available."
+                prompt = f"{summary_context}\n\nUser message: {message}\n\nPlease respond in the context of the ongoing story:"
+                ai_response = await process_message_with_context(prompt, user_id, 'twitch', conversation_id)
 
-            prompt = f"{summary_context}\n\nUser message: {message}\n\nPlease respond in the context of the ongoing story:"
+                response = f"🤖 AI: {ai_response}"
+                if relevant_summary:
+                    response += f"\n📜 *Story context: {relevant_summary[:100]}...*"
 
-            ai_response = await process_message_with_context(prompt, user_id, 'twitch', conversation_id)
-
-            response = f"🤖 AI: {ai_response}"
-            if relevant_summary:
-                response += f"\n📜 *Story context: {relevant_summary[:100]}...*"
-
-            await ctx.send(response)
-            logger.info(f"💬 Successful chat interaction with user {user_id}")
-        except Exception as e:
-            logger.error(f"🚫 Error in Twitch chat command for user {user_id}: {e}")
-            await ctx.send("🚫 Sorry, an error occurred while processing your request.")
+                await ctx.send(response)
+                logger.info(f"💬 Successful chat interaction with user {user_id}")
+            except Exception as e:
+                logger.error(f"🚫 Error in Twitch chat command for user {user_id}: {e}")
+                await ctx.send("🚫 Sorry, an error occurred while processing your request.")
 
     @commands.command(name="recite")
     async def recite_command(self, ctx: commands.Context, *, query: str = None):
