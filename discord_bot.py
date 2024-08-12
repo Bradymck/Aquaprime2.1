@@ -27,7 +27,7 @@ class DiscordBot(discord_commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.conversations = {}
-        self.test_guild_id = discord.Object(id=int(DISCORD_GUILD_ID))
+        self.test_guild_id = discord.Object(id=int(os.environ['DISCORD_GUILD_ID']))
         logger.info("DiscordBot initialized")
 
     @app_commands.command(name='chat', description='Chat with the AI')
