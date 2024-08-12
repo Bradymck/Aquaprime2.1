@@ -60,11 +60,12 @@ async def process_message_with_context(prompt, user_id, platform, conversation_i
     return response
 
 async def save_message(content, platform, user_id, username):
-    sentiment = analyze_sentiment(content)  # Make sure this function is defined
-    with session_scope() as session:
+    sentiment = analyze_sentiment(content)
+    async with session_scope() as session:
         new_message = Message(content=content, platform=platform, user_id=user_id, username=username, sentiment=sentiment)
         session.add(new_message)
-        user = session.query(UserEngagement).filter_by(user_id=user_id).first()
+        user = await session.execute(select(UserEngagement).filter_by(user_id=user_id))
+        user = user.scalar_one_or_none()
         if user:
             user.message_count += 1
             user.last_active = datetime.utcnow()
