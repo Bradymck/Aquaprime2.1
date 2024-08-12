@@ -37,13 +37,15 @@ AsyncSessionMaker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 
 @asynccontextmanager
 async def session_scope():
-    async with AsyncSessionMaker() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception as e:
-            await session.rollback()
-            raise e
+    session = AsyncSessionMaker()
+    try:
+        yield session
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        raise e
+    finally:
+        await session.close()
 
 async def init_db():
     async with engine.begin() as conn:
@@ -86,7 +88,7 @@ class AgentMemory(Base):
 class ConversationMessage(Base):
     __tablename__ = 'conversation_messages'
     id = Column(Integer, primary_key=True)
-    conversation_id = Column(Integer, ForeignKey('conversations.id'))
+    conversation_id = Column(String, ForeignKey('conversations.conversation_id'))
     role = Column(String)
     content = Column(String)
     timestamp = Column(DateTime)
@@ -98,7 +100,7 @@ class Conversation(Base):
     conversation_id = Column(String, unique=True)
     agent_id = Column(String)
     start_time = Column(DateTime)
-    end_time = Column(DateTime)
+    end_time = Column(DateTime, nullable=True)
     summary = Column(String)
     messages = relationship("ConversationMessage", order_by="ConversationMessage.timestamp", back_populates="conversation")
 

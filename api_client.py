@@ -106,7 +106,7 @@ async def scheduled_sync():
                 for conv in conversations:
                     try:
                         existing_conv = await session.execute(select(Conversation).filter_by(conversation_id=conv['id']))
-                        existing_conv = existing_conv.scalar_one_or_none()
+                        existing_conv = await existing_conv.scalar_one_or_none()
                         if existing_conv is None:
                             new_conv = Conversation(
                                 conversation_id=conv['id'],

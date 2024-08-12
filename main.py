@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import logging
 import asyncio
 import random
@@ -8,9 +9,10 @@ from openai import AsyncOpenAI
 from shared_utils import print_header, log_info
 from api_client import scheduled_sync
 from discord.ext import commands
-from discord import Intents  # Add this import
+from discord import Intents
 import aiofiles
 import signal
+from twitch_bot import run_twitch_bot  # Add this import
 
 # Initialize colorama
 init(autoreset=True)
@@ -19,7 +21,8 @@ init(autoreset=True)
 AQUA_EMOJIS = [
     "🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"
 ]
-
+# Load environment variables from .env file
+load_dotenv()
 
 class AquaPrimeFormatter(logging.Formatter):
 
@@ -82,8 +85,8 @@ async def generate_response(prompt):
 
 
 async def run_discord_bot():
-    from discord_bot import bot
-    await bot.start(os.getenv('DISCORD_TOKEN'))
+    from discord_bot import run_discord_bot as discord_run
+    await discord_run()
 
 
 async def main():
@@ -101,8 +104,11 @@ async def main():
     # Run the Discord bot
     discord_task = asyncio.create_task(run_discord_bot())
 
-    # Wait for both tasks to complete
-    await asyncio.gather(sync_task, discord_task)
+    # Run the Twitch bot
+    twitch_task = asyncio.create_task(run_twitch_bot())
+
+    # Wait for all tasks to complete
+    await asyncio.gather(sync_task, discord_task, twitch_task)
 
 
 def signal_handler():
@@ -126,11 +132,10 @@ if __name__ == "__main__":
         loop.add_signal_handler(sig, signal_handler)
 
     try:
-        loop.run_until_complete(main())
+        asyncio.run(main())
     except Exception as e:
         logger.error(f"Error running bots: {e}")
     finally:
-        loop.close()
         print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
         logger.info(
             f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Shutdown Complete{Style.RESET_ALL}"

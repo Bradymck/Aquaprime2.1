@@ -27,13 +27,13 @@ class DiscordBot(commands.Cog):
             summary_context = f"Summary: {relevant_summary}" if relevant_summary else "No summary available."
 
             prompt = f"{summary_context}\n\nUser: {message}\n\n"
-            ai_response = process_message_with_context(prompt, user_id, 'discord', conversation_id)
+            ai_response = await process_message_with_context(prompt, user_id, 'discord', conversation_id)
             response = f"AI: {ai_response}\n"
             if relevant_summary:
                 response += f"Context: {relevant_summary[:100]}..."
 
             await interaction.response.send_message(response)
-            save_message(message, 'discord', user_id, interaction.user.name)
+            await save_message(message, 'discord', user_id, interaction.user.name)
 
             game_state_manager.update_agent_knowledge(user_id, {"question": message, "answer": ai_response})
 
@@ -41,14 +41,8 @@ class DiscordBot(commands.Cog):
             logger.error(f"Chat error for user {user_id}: {e}")
             await interaction.response.send_message("An error occurred while processing your request.")
 
-@bot.event
-async def on_ready():
-    logger.info("Bot is ready")
+async def setup(bot):
     await bot.add_cog(DiscordBot(bot))
-    await bot.tree.sync()
 
-def run_discord_bot():
-    bot.run(os.getenv('DISCORD_TOKEN'))
-
-if __name__ == "__main__":
-    run_discord_bot()
+async def run_discord_bot():
+    await bot.start(os.getenv('DISCORD_TOKEN'))

@@ -53,38 +53,36 @@ async def generate_response_with_openai(prompt):
         return "An error occurred while generating the response."
 
 async def process_message_with_context(prompt, user_id, platform, conversation_id):
-    logger.info(f"Processing message for user {user_id} on platform {platform}")
-    combined_prompt = f"User: {user_id}\nPlatform: {platform}\nConversation: {conversation_id}\n{prompt}"
+    # Implement this function to process messages with context
+    # This is a placeholder implementation
+    return await generate_response_with_openai(prompt)
 
-    response = await generate_response_with_openai(combined_prompt)
-    return response
+def get_relevant_summary(user_id):
+    # Implement this function to get relevant summary for a user
+    # This is a placeholder implementation
+    return "No summary available"
 
 async def save_message(content, platform, user_id, username):
-    sentiment = analyze_sentiment(content)
     async with session_scope() as session:
-        new_message = Message(content=content, platform=platform, user_id=user_id, username=username, sentiment=sentiment)
-        session.add(new_message)
-        user = await session.execute(select(UserEngagement).filter_by(user_id=user_id))
-        user = user.scalar_one_or_none()
-        if user:
-            user.message_count += 1
-            user.last_active = datetime.utcnow()
-            user.overall_sentiment = (user.overall_sentiment * (user.message_count - 1) + sentiment) / user.message_count
-        else:
-            new_user = UserEngagement(user_id=user_id, username=username, message_count=1, overall_sentiment=sentiment)
-            session.add(new_user)
-    logger.info(f"Message saved to database for user {username}")
+        message = Message(
+            content=content,
+            platform=platform,
+            user_id=user_id,
+            username=username,
+            sentiment=analyze_sentiment(content)
+        )
+        session.add(message)
+        await session.flush()
 
-def get_relevant_summary(user_id, query=None):
-    with session_scope() as session:
-        latest_summary = session.query(TranscriptSummary).order_by(TranscriptSummary.created_at.desc()).first()
-        user = session.query(UserEngagement).filter_by(user_id=user_id).first()
-        last_interaction = user.last_active if user else None
+        # Update user engagement
+        user_engagement = await session.get(UserEngagement, user_id)
+        if not user_engagement:
+            user_engagement = UserEngagement(user_id=user_id, username=username)
+            session.add(user_engagement)
 
-        if last_interaction and latest_summary and latest_summary.created_at > last_interaction:
-            return latest_summary.content if latest_summary else None
-
-        return session.query(TranscriptSummary).order_by(TranscriptSummary.created_at.desc()).first().content if latest_summary else None
+        user_engagement.message_count += 1
+        user_engagement.overall_sentiment = (user_engagement.overall_sentiment * (user_engagement.message_count - 1) + message.sentiment) / user_engagement.message_count
+        user_engagement.last_active = datetime.utcnow()
 
 def update_user_reputations():
     with session_scope() as session:
