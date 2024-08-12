@@ -9,6 +9,7 @@ from sqlalchemy import desc
 from colorama import init, Fore, Back, Style
 import tracemalloc
 tracemalloc.start()
+import aiofiles  # Add this import
 
 from database import session_scope, Conversation, ConversationMessage
 
@@ -202,12 +203,16 @@ async def test_api_connection() -> bool:
 
 async def run_sync():
     while True:
-        connection_success = await test_api_connection()
-        if connection_success:
-            await scheduled_sync()
-        else:
-            logger.error("API connection test failed. Retrying in 5 minutes.")
-        await asyncio.sleep(300)  # Wait for 5 minutes before the next sync attempt
+        try:
+            connection_success = await test_api_connection()
+            if connection_success:
+                await scheduled_sync()
+            else:
+                logger.error("API connection test failed. Retrying in 5 minutes.")
+            await asyncio.sleep(300)  # Wait for 5 minutes before the next sync attempt
+        except Exception as e:
+            logger.error(f"An error occurred in run_sync: {e}")
+            await asyncio.sleep(300)  # Wait before retrying
 
 async def start_scheduled_sync():
     if not all([PLAY_AI_API_URL, PLAY_AI_API_KEY, PLAY_AI_USER_ID, AGENT_ID]):
@@ -248,6 +253,10 @@ def signal_handler():
     for task in asyncio.all_tasks():
         task.cancel()
     asyncio.get_event_loop().stop()
+
+async def log_api_response(response_data):
+    async with aiofiles.open('api_responses.log', mode='a') as f:
+        await f.write(f"{response_data}\n")
 
 if __name__ == "__main__":
     asyncio.run(start_scheduled_sync())

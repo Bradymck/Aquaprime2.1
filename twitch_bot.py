@@ -11,6 +11,8 @@ required_env_vars = [
     'TWITCH_IRC_TOKEN', 'TWITCH_CLIENT_ID', 'TWITCH_CHANNEL', 'TWITCH_NICK',
     'PLAY_AI_API_KEY', 'PLAY_AI_USER_ID', 'AGENT_ID', 'PLAY_AI_API_URL', 'OPENAI_API_KEY'
 ]
+import aiofiles  # Add this import
+
 class RateLimiter:
     def __init__(self, rate, per):
         self.rate = rate
@@ -112,6 +114,10 @@ class Bot(commands.Bot):
         """
         await ctx.send(help_text)
         logger.info(f"ℹ️ Help command used by user {ctx.author.id}")
+
+    async def log_twitch_activity(self, activity):
+        async with aiofiles.open('twitch_activity.log', mode='a') as f:
+            await f.write(f"{activity}\n")
 
     async def close(self):
         await super().close()

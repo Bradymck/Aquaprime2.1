@@ -2,6 +2,8 @@ import logging
 from colorama import init, Fore, Back, Style
 import os
 from openai import AsyncOpenAI
+import aiofiles  # Add this import
+
 # Initialize colorama
 init(autoreset=True)
 # Set up logger
@@ -36,3 +38,10 @@ def log_error(message):
 async def generate_response(prompt):
     # Implementation for generating a response
     pass
+
+async def write_to_file(filename, data):
+    async with aiofiles.open(filename, mode='w') as f:
+        await f.write(data)
+
+# Example usage
+# await write_to_file('output.txt', 'Some data to write')  # Call this where needed

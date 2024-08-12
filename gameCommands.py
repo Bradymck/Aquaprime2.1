@@ -9,6 +9,7 @@ from database import init_db
 from api_client import scheduled_sync
 from openai import AsyncOpenAI  # Ensure this is AsyncOpenAI
 from shared_utils import print_header, log_info
+import aiofiles  # Add this import
 
 # Initialize colorama
 init(autoreset=True)
@@ -114,3 +115,11 @@ async def on_ready():
 
 # Run the bot with your token
 bot.run('YOUR_BOT_TOKEN')
+
+# Add this function to log commands asynchronously
+async def log_command(command):
+    async with aiofiles.open('game_commands.log', mode='a') as f:
+        await f.write(f"{command}\n")
+
+# Call this function where you handle commands
+# await log_command(command)  # Example usage
