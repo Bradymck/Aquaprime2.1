@@ -4,11 +4,11 @@ import asyncio
 import random
 from datetime import datetime
 from colorama import init, Fore, Style
-from database import init_db
 from openai import AsyncOpenAI
 from shared_utils import print_header, log_info
 from api_client import scheduled_sync
 from discord.ext import commands
+from discord import Intents  # Add this import
 import aiofiles
 import signal
 
@@ -74,8 +74,10 @@ async def run_discord_bot():
 async def main():
     print_header("Aqua Prime Bot Starting")
 
+    from database import init_db
+
     # Initialize the database
-    init_db()
+    await init_db()
     log_info("Database initialized")
 
     # Start the scheduled sync task
@@ -114,17 +116,20 @@ if __name__ == "__main__":
         logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Shutdown Complete{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
 
-# Import your commands cog
-async def setup():
-    from gameCommands import setup_cog
-    await setup_cog()
+# Make sure this is after main to avoid the circular import issue
+intents = Intents.default()  # Define intents
+intents.message_content = True  # Enable message content intent
 
-bot = commands.Bot(command_prefix="!")
+bot = commands.Bot(command_prefix="!", intents=intents)  # Pass intents to bot
 
 @bot.event
 async def on_ready():
     logger.info(f'Logged in as {bot.user}')
     await setup()  # Load the commands cog when the bot is ready
+
+async def setup():
+    from gameCommands import setup_cog
+    await setup_cog()
 
 # Add this function to log commands asynchronously
 async def log_command(command):
