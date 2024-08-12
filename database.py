@@ -3,7 +3,7 @@ from sqlalchemy import Column, DateTime, Float, Integer, String, JSON, ForeignKe
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import QueuePool
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 from datetime import datetime
 from colorama import init, Fore, Style
 import random
