@@ -101,12 +101,12 @@ if __name__ == "__main__":
         print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
 
 # Import your commands cog
-from gameCommands import CommandsCog
+from gameCommands import setup
 
 bot = commands.Bot(command_prefix='!')
 
 async def setup():
-    await bot.add_cog(CommandsCog(bot))
+    await setup(bot)
 
 @bot.event
 async def on_ready():
