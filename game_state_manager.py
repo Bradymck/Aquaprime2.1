@@ -1,5 +1,6 @@
 import json
 import aiohttp
+import asyncio
 
 class GameStateManager:
     def __init__(self, repo_path, file_path):
@@ -54,3 +55,25 @@ class GameStateManager:
 if __name__ == "__main__":
     manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
     print(manager.game_state)
+
+async def scheduled_sync():
+    while True:
+        try:
+            # Ensure all asynchronous calls are properly awaited
+            await some_async_task()  # Example task
+        except GeneratorExit:
+            # Handle cleanup if needed
+            break
+        except Exception as e:
+            logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
+        await asyncio.sleep(300)  # Sleep to prevent tight loops
+
+async def fetch_data(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return await response.json()  # Await the response here
+
+# Ensure any method calling fetch_data(url) is also awaited
+async def main():
+    data = await fetch_data("https://api.example.com/data")
+    print(data)
