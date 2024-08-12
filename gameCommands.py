@@ -68,11 +68,20 @@ async def generate_response(prompt):
 
 async def main():
     print_header("Aqua Prime Bot Starting")
-    log_info("Initializing Discord bot...")
 
-    # Import the run functions here to avoid circular imports
-    from discord_bot import run_discord_bot
+    from database import init_db
+
+    # Initialize the database
+    await init_db()
+    log_info("Database initialized")
+
+    # Start the scheduled sync task
+    sync_task = asyncio.create_task(scheduled_sync())
+
+    # Import and run the Discord bot
     await run_discord_bot()
+
+    await sync_task
 
 def signal_handler():
     logger.info("Received shutdown signal. Closing bots...")
