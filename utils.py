@@ -29,7 +29,6 @@ async def generate_response_with_openai(prompt, user_id):
         chat_history = get_chat_history(user_id)
         user_sentiment = get_user_sentiment(user_id)
 
-        # Add emoji based on user sentiment
         sentiment_emoji = "😃" if user_sentiment > 75 else "🙂" if user_sentiment > 50 else "😐" if user_sentiment > 25 else "😞"
         
         full_prompt = (
@@ -56,6 +55,8 @@ async def generate_response_with_openai(prompt, user_id):
         logger.error(f"Error communicating with OpenAI API: {str(e)}")
         if 'invalid_api_key' in str(e):
             logger.error("Invalid API key. Please check your OpenAI API key in Replit secrets.")
+        elif 'rate limit' in str(e):
+            logger.error("Rate limit exceeded. Please try again later.")
         return "Sorry, I encountered an error while processing your request."
 
 async def process_message_with_context(content, user_id, platform, conversation_id):
