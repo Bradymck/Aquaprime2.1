@@ -182,7 +182,13 @@ def get_user_sentiment(user_id):
 import discord
 import asyncio
 
-client = discord.Client()
+# Create an instance of Intents
+intents = discord.Intents.default()
+intents.messages = True  # Enable the message intent if you want to receive message events
+intents.guilds = True  # Enable guild-related events
+intents.members = True  # Enable member-related events
+
+client = discord.Client(intents=intents)
 
 @client.event
 async def on_ready():
