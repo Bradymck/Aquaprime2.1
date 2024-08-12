@@ -51,36 +51,36 @@ class GameStateManager:
         with open(self.file_path, 'w') as file:
             json.dump(self.game_state, file)
 
-# Example usage
-if __name__ == "__main__":
-    manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
-    print(manager.game_state)
-
-async def scheduled_sync():
-    while True:
+    async def scheduled_sync(self):
         try:
-            # Your asynchronous task here
-            await some_async_task()  # Example task
-        except GeneratorExit:
-            logger.info("Scheduled sync task is being cancelled.")
-            break  # Exit the loop on cancellation
+            while True:
+                # Your asynchronous task here
+                await some_async_task()  # Example task
+                await asyncio.sleep(300)  # Sleep to prevent tight loops
+        except asyncio.CancelledError:
+            logger.info("Scheduled sync task was cancelled.")
+            # No need for break here, just exit the loop
         except Exception as e:
             logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
-        await asyncio.sleep(300)  # Sleep to prevent tight loops
 
 def signal_handler():
     logger.info("Received shutdown signal. Closing bots...")
     for task in asyncio.all_tasks():
         task.cancel()  # Cancel pending tasks
-    asyncio.get_event_loop().stop()
-
-async def fetch_data(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            return await response.json()  # Await the response here
+    asyncio.get_event_loop().stop()  # Stop the event loop
 
 async def main():
     try:
-        await asyncio.gather(discord_task, twitch_task, sync_task)
+        await asyncio.gather(discord_task, twitch_task, scheduled_sync())
     except asyncio.CancelledError:
         logger.info("Main task was cancelled.")
+    finally:
+        # Ensure all tasks are completed before exiting
+        for task in asyncio.all_tasks():
+            task.cancel()
+        await asyncio.gather(*asyncio.all_tasks(), return_exceptions=True)
+
+# Example usage
+if __name__ == "__main__":
+    manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
+    print(manager.game_state)

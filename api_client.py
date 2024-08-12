@@ -115,12 +115,7 @@ async def fetch_conversation_transcript(conversation_id: str) -> Optional[List[D
 
 async def scheduled_sync():
     try:
-        start_time = datetime.now()
-        print(f"\n{COLORS['header']}{'=' * 80}{COLORS['reset']}")
-        print(f"{COLORS['header']}{'Aqua Prime Sync Initiated':^80}{COLORS['reset']}")
-        print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
-
-        while True:  # Keep the sync running
+        while True:
             conversations = await fetch_recent_conversations()  # Ensure this is awaited
             if not conversations:  # Handle empty conversations
                 logger.info("No new conversations to sync.")
@@ -148,35 +143,27 @@ async def scheduled_sync():
 
                             messages = await fetch_conversation_transcript(conv['id'])
                             for msg in messages:
-                                new_msg = ConversationMessage(
-                                    conversation_id=conv['id'],
-                                    role=msg['role'],
-                                    content=msg['content'],
-                                    timestamp=datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
-                                )
-                                session.add(new_msg)
+                                if 'content' in msg:  # Check if 'content' exists
+                                    new_msg = ConversationMessage(
+                                        conversation_id=conv['id'],
+                                        role=msg['role'],
+                                        content=msg['content'],
+                                        timestamp=datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
+                                    )
+                                    session.add(new_msg)
+                                else:
+                                    logger.error(f"Message does not contain 'content': {msg}")  # Log error for missing content
                             message_count += len(messages)
                         else:
-                            existing_conv.end_time = datetime.fromisoformat(conv['endedAt'].replace('Z', '+00:00')) if conv['endedAt'] else None
-                            existing_conv.summary = conv.get('summary', '')
+                            # Handle existing conversation updates if needed
                             update_count += 1
                     except Exception as e:
                         logger.error(f"Sync error: {str(e)}")
 
-            end_time = datetime.now()
-            duration = (end_time - start_time).total_seconds()
-
-            print(f"\n{COLORS['header']}{'=' * 80}{COLORS['reset']}")
-            print(f"{COLORS['header']}{'Aqua Prime Sync Completed':^80}{COLORS['reset']}")
-            print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
-            print(f"{COLORS['info']}{'Sync Summary':^80}{COLORS['reset']}")
-            print(f"{COLORS['info']}{'🆕 New Conversations:':<40}{new_count:>40}{COLORS['reset']}")
-            print(f"{COLORS['info']}{'📊 Updated Conversations:':<40}{update_count:>40}{COLORS['reset']}")
-            print(f"{COLORS['info']}{'💬 Messages Added:':<40}{message_count:>40}{COLORS['reset']}")
-            print(f"{COLORS['info']}{'⏱️ Duration (seconds):':<40}{duration:>40.2f}{COLORS['reset']}")
-
             await asyncio.sleep(300)  # Sleep before the next sync attempt
 
+    except asyncio.CancelledError:
+        logger.info("Scheduled sync task was cancelled.")
     except Exception as e:
         logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
 
@@ -251,12 +238,23 @@ def update_agent(agent_id, data):
 def signal_handler():
     logger.info("Received shutdown signal. Closing bots...")
     for task in asyncio.all_tasks():
-        task.cancel()
-    asyncio.get_event_loop().stop()
+        task.cancel()  # Cancel pending tasks
+    asyncio.get_event_loop().stop()  # Stop the event loop
 
 async def log_api_response(response_data):
     async with aiofiles.open('api_responses.log', mode='a') as f:
         await f.write(f"{response_data}\n")
+
+async def main():
+    try:
+        await asyncio.gather(discord_task, twitch_task, scheduled_sync())
+    except asyncio.CancelledError:
+        logger.info("Main task was cancelled.")
+    finally:
+        # Ensure all tasks are completed before exiting
+        for task in asyncio.all_tasks():
+            task.cancel()
+        await asyncio.gather(*asyncio.all_tasks(), return_exceptions=True)
 
 if __name__ == "__main__":
     asyncio.run(start_scheduled_sync())

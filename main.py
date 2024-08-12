@@ -90,8 +90,8 @@ async def main():
 def signal_handler():
     logger.info("Received shutdown signal. Closing bots...")
     for task in asyncio.all_tasks():
-        task.cancel()
-    asyncio.get_event_loop().stop()
+        task.cancel()  # Cancel pending tasks
+    asyncio.get_event_loop().stop()  # Stop the event loop
 
 if __name__ == "__main__":
     print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
