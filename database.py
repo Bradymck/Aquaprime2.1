@@ -30,7 +30,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 Base = declarative_base()
-engine = create_async_engine('sqlite+aiosqlite:///unified_chat_memory.db', poolclass=QueuePool, pool_size=10, max_overflow=20)
+engine = create_async_engine('sqlite+aiosqlite:///unified_chat_memory.db')
 AsyncSessionMaker = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 class Message(Base):
