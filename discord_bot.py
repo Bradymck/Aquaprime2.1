@@ -23,7 +23,7 @@ class DiscordBot(commands.Cog):
         conversation_id = None  # Example: You might track conversation IDs differently
 
         try:
-            relevant_summary = get_relevant_summary(user_id)
+            relevant_summary = await get_relevant_summary(user_id)
             summary_context = f"Summary: {relevant_summary}" if relevant_summary else "No summary available."
 
             prompt = f"{summary_context}\n\nUser: {message}\n\n"
