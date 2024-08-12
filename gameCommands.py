@@ -6,6 +6,7 @@ import random
 from datetime import datetime
 from colorama import init, Fore, Style
 from database import init_db
+
 from api_client import scheduled_sync
 from openai import AsyncOpenAI  # Ensure this is AsyncOpenAI
 from shared_utils import print_header, log_info

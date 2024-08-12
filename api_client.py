@@ -3,13 +3,12 @@ import asyncio
 import logging
 import os
 from typing import List, Dict, Any, Optional
-from aiolimiter import AsyncLimiter
+from async_limiter import AsyncLimiter
 from datetime import datetime
-from sqlalchemy import desc
 from colorama import init, Fore, Back, Style
 import tracemalloc
 tracemalloc.start()
-import aiofiles  # Add this import
+import aiofiles
 
 from database import session_scope, Conversation, ConversationMessage
 
@@ -116,10 +115,10 @@ async def fetch_conversation_transcript(conversation_id: str) -> Optional[List[D
 async def scheduled_sync():
     try:
         while True:
-            conversations = await fetch_recent_conversations()  # Ensure this is awaited
-            if not conversations:  # Handle empty conversations
+            conversations = await fetch_recent_conversations()
+            if not conversations:
                 logger.info("No new conversations to sync.")
-                await asyncio.sleep(300)  # Sleep before the next sync attempt
+                await asyncio.sleep(300)
                 continue
 
             new_count = 0
@@ -143,7 +142,7 @@ async def scheduled_sync():
 
                             messages = await fetch_conversation_transcript(conv['id'])
                             for msg in messages:
-                                if 'content' in msg:  # Check if 'content' exists
+                                if 'content' in msg:
                                     new_msg = ConversationMessage(
                                         conversation_id=conv['id'],
                                         role=msg['role'],
@@ -152,41 +151,19 @@ async def scheduled_sync():
                                     )
                                     session.add(new_msg)
                                 else:
-                                    logger.error(f"Message does not contain 'content': {msg}")  # Log error for missing content
+                                    logger.error(f"Message does not contain 'content': {msg}")
                             message_count += len(messages)
                         else:
-                            # Handle existing conversation updates if needed
                             update_count += 1
                     except Exception as e:
                         logger.error(f"Sync error: {str(e)}")
 
-            await asyncio.sleep(300)  # Sleep before the next sync attempt
+            await asyncio.sleep(300)
 
     except asyncio.CancelledError:
         logger.info("Scheduled sync task was cancelled.")
     except Exception as e:
         logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
-
-async def test_api_connection() -> bool:
-    url = f"{PLAY_AI_API_URL}/agents/{AGENT_ID}/conversations"
-    headers = {
-        "Authorization": f"Bearer {PLAY_AI_API_KEY}",
-        "X-USER-ID": PLAY_AI_USER_ID,
-        "Accept": "application/json"
-    }
-    params = {"limit": 1}  # We only need one conversation to test the connection
-
-    logger.info(f"Testing API connection to: {url}")
-    logger.info(f"Headers: {headers}")
-    logger.info(f"Params: {params}")
-
-    result = await make_api_request(url, headers, params)
-    if result is not None:
-        logger.info("API connection test successful")
-        return True
-    else:
-        logger.error("API connection test failed")
-        return False
 
 async def run_sync():
     while True:
@@ -196,10 +173,10 @@ async def run_sync():
                 await scheduled_sync()
             else:
                 logger.error("API connection test failed. Retrying in 5 minutes.")
-            await asyncio.sleep(300)  # Wait for 5 minutes before the next sync attempt
+            await asyncio.sleep(300)
         except Exception as e:
             logger.error(f"An error occurred in run_sync: {e}")
-            await asyncio.sleep(300)  # Wait before retrying
+            await asyncio.sleep(300)
 
 async def start_scheduled_sync():
     if not all([PLAY_AI_API_URL, PLAY_AI_API_KEY, PLAY_AI_USER_ID, AGENT_ID]):
@@ -210,51 +187,6 @@ async def start_scheduled_sync():
         await run_sync()
     except Exception as e:
         logger.error(f"An unexpected error occurred in start_scheduled_sync: {e}")
-
-def get_latest_summary(session):
-    latest_conversation = session.query(Conversation).order_by(desc(Conversation.end_time)).first()
-    if latest_conversation:
-        return latest_conversation.summary
-    return None
-
-def get_relevant_summary(session, query):
-    # This is a simple implementation. You might want to use more sophisticated
-    # search algorithms depending on your needs.
-    relevant_conversation = session.query(Conversation).filter(
-        Conversation.summary.ilike(f"%{query}%")
-    ).order_by(desc(Conversation.end_time)).first()
-    if relevant_conversation:
-        return relevant_conversation.summary
-    return None
-
-async def update_agent_knowledge(agent_id, data):
-    # Implementation for updating agent knowledge
-    pass
-
-def update_agent(agent_id, data):
-    # Implementation for updating agent information
-    pass
-
-def signal_handler():
-    logger.info("Received shutdown signal. Closing bots...")
-    for task in asyncio.all_tasks():
-        task.cancel()  # Cancel pending tasks
-    asyncio.get_event_loop().stop()  # Stop the event loop
-
-async def log_api_response(response_data):
-    async with aiofiles.open('api_responses.log', mode='a') as f:
-        await f.write(f"{response_data}\n")
-
-async def main():
-    try:
-        await asyncio.gather(discord_task, twitch_task, scheduled_sync())
-    except asyncio.CancelledError:
-        logger.info("Main task was cancelled.")
-    finally:
-        # Ensure all tasks are completed before exiting
-        for task in asyncio.all_tasks():
-            task.cancel()
-        await asyncio.gather(*asyncio.all_tasks(), return_exceptions=True)
 
 if __name__ == "__main__":
     asyncio.run(start_scheduled_sync())

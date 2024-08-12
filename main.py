@@ -1,34 +1,30 @@
-# main.py
-
 import os
 import logging
 import asyncio
-import signal
 import random
 from datetime import datetime
 from colorama import init, Fore, Style
 from database import init_db
-init_db()  # Ensure the database is initialized
+from openai import AsyncOpenAI  # Ensure this is AsyncOpenAI
+from shared_utils import print_header, log_info
 from api_client import scheduled_sync
-from openai import AsyncOpenAI  # Changed to AsyncOpenAI
-from shared_utils import print_header, log_info, log_error
-from game_state_manager import GameStateManager  # Ensure this import is present
-from twitch_bot import run_twitch_bot  # Ensure this import is present
 from discord.ext import commands
-from gameCommands import setup  # Import the setup function
+import aiofiles  # Add this import
+import signal
 
 # Initialize colorama
 init(autoreset=True)
 
-# Aqua Prime themed emojis and symbols
-AQUA_EMOJIS = ["🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"]
+# Aqua Prime themed emojis and symbols💧
+AQUA_EMOJIS = [
+    "🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"
+]
 
 class AquaPrimeFormatter(logging.Formatter):
     def format(self, record):
         aqua_colors = [Fore.CYAN, Fore.BLUE, Fore.GREEN]
         color = random.choice(aqua_colors)
         emoji = random.choice(AQUA_EMOJIS)
-
         log_message = super().format(record)
         return f"{color}{Style.BRIGHT}{emoji} {log_message}{Style.RESET_ALL}"
 
@@ -39,68 +35,63 @@ handler.setFormatter(AquaPrimeFormatter('%(asctime)s - %(name)s - %(levelname)s 
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
-# List of required environment variables
-required_env_vars = [
+# List of required Replit secrets
+required_secrets = [
     'DISCORD_TOKEN', 'DISCORD_GUILD_ID', 'TWITCH_IRC_TOKEN', 'TWITCH_CLIENT_ID',
-    'TWITCH_CHANNEL', 'TWITCH_NICK', 'OPENAI_API_KEY', 'PLAY_AI_API_KEY',
-    'PLAY_AI_USER_ID', 'AGENT_ID', 'PLAY_AI_API_URL'
+    'TWITCH_CHANNEL', 'TWITCH_NICK', 'OPENAI_API_KEY'
 ]
 
-# Check for missing environment variables
-missing_env_vars = [var for var in required_env_vars if var not in os.environ]
-if missing_env_vars:
-    log_error(f"Missing required environment variables: {', '.join(missing_env_vars)}")
-    raise SystemExit(f"Missing required environment variables: {', '.join(missing_env_vars)}")
+# Check for missing Replit secrets
+missing_secrets = [secret for secret in required_secrets if secret not in os.environ]
+if missing_secrets:
+    logger.error(f"Missing required Replit secrets: {', '.join(missing_secrets)}")
+    raise SystemExit(f"Missing required Replit secrets: {', '.join(missing_secrets)}")
 
-log_info(f"All required environment variables are set")
-
-# Check for PyNaCl
-try:
-    import nacl
-except ImportError:
-    log_warning("PyNaCl is not installed, voice features will not be available. To install, run: pip install pynacl")
+logger.info(f"Replit secrets set: {', '.join(required_secrets)}")
 
 # Initialize OpenAI client
 client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])  # Ensure this is AsyncOpenAI
 
-# Initialize GameStateManager
-repo_path = "./AquaPrimeLORE"
-file_path = "./AquaPrimeLORE/game_state.json"
-game_state_manager = GameStateManager(repo_path, file_path)
+async def generate_response(prompt):
+    try:
+        logger.info(f"Sending prompt to OpenAI: {prompt[:50]}...")  # Log first 50 chars of prompt
+        response = await client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        logger.error(f"OpenAI API error: {e}")
+        return "Sorry, I encountered an error."
+
+async def run_discord_bot():
+    from discord_bot import run_discord_bot
+    await run_discord_bot()
 
 async def main():
     print_header("Aqua Prime Bot Starting")
 
-    # Initialize database
+    # Initialize the database
     init_db()
     log_info("Database initialized")
 
     # Start the scheduled sync task
     sync_task = asyncio.create_task(scheduled_sync())
-    log_info("Scheduled sync task started")
 
-    # Initialize the bot
-    bot = commands.Bot(command_prefix='!')
+    # Import and run the Discord bot
+    await run_discord_bot()
 
-    # Load the commands cog
-    await setup(bot)
-
-    # Start the bot
-    discord_task = asyncio.create_task(bot.start(os.environ['DISCORD_TOKEN']))
-    log_info("Discord bot started")
-
-    # Start the Twitch bot
-    twitch_task = asyncio.create_task(run_twitch_bot())
-    log_info("Twitch bot started")
-
-    # Wait for both bots to complete (which should be never, unless there's an error)
-    await asyncio.gather(discord_task, twitch_task, sync_task)
+    # Wait for sync task to complete (it should run indefinitely unless there's an error)
+    await sync_task
 
 def signal_handler():
     logger.info("Received shutdown signal. Closing bots...")
     for task in asyncio.all_tasks():
-        task.cancel()  # Cancel pending tasks
-    asyncio.get_event_loop().stop()  # Stop the event loop
+        task.cancel()
+    asyncio.get_event_loop().stop()
 
 if __name__ == "__main__":
     print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
@@ -122,3 +113,26 @@ if __name__ == "__main__":
         print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
         logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Shutdown Complete{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
+
+# Import your commands cog
+async def setup():
+    from gameCommands import setup_cog
+    await setup_cog()
+
+bot = commands.Bot(command_prefix="!")
+
+@bot.event
+async def on_ready():
+    logger.info(f'Logged in as {bot.user}')
+    await setup()  # Load the commands cog when the bot is ready
+
+# Run the bot with your token
+bot.run(os.getenv('DISCORD_TOKEN'))
+
+# Add this function to log commands asynchronously
+async def log_command(command):
+    async with aiofiles.open('game_commands.log', mode='a') as f:
+        await f.write(f"{command}\n")
+
+# Example usage
+# await log_command(command)
