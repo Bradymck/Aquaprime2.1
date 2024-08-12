@@ -54,7 +54,7 @@ PLAY_AI_USER_ID = os.getenv('PLAY_AI_USER_ID')
 AGENT_ID = os.getenv('AGENT_ID')
 
 # Rate limiter: 10 requests per second
-rate_limiter = Limiter(10 / 1)  # Change to Limiter
+rate_limiter = Limiter(10 / 1)  # Corrected import statement
 
 async def make_api_request(url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]] = None, max_retries: int = 3) -> Optional[Dict[str, Any]]:
     async with rate_limiter:
