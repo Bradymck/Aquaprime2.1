@@ -1,6 +1,6 @@
 import logging
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import QueuePool
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON
 from contextlib import asynccontextmanager
@@ -91,17 +91,16 @@ class Conversation(Base):
     start_time = Column(DateTime)
     end_time = Column(DateTime)
     summary = Column(String)
+    messages = relationship("ConversationMessage", order_by=ConversationMessage.timestamp, back_populates="conversation")
 
 class ConversationMessage(Base):
     __tablename__ = 'conversation_messages'
     id = Column(Integer, primary_key=True)
-    conversation_id = Column(String, ForeignKey('conversations.conversation_id'))
+    conversation_id = Column(Integer, ForeignKey('conversations.id'))
     role = Column(String)
     content = Column(String)
     timestamp = Column(DateTime)
     conversation = relationship("Conversation", back_populates="messages")
-
-Conversation.messages = relationship("ConversationMessage", order_by=ConversationMessage.timestamp, back_populates="conversation")
 
 print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
 logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Database Initialized{Style.RESET_ALL}")
