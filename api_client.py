@@ -119,7 +119,7 @@ async def scheduled_sync():
         print(f"{COLORS['header']}{'Aqua Prime Sync Initiated':^80}{COLORS['reset']}")
         print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
 
-        conversations = await fetch_recent_conversations()
+        conversations = await fetch_recent_conversations()  # Ensure this is awaited
         if not conversations:  # Handle empty conversations
             logger.info("No new conversations to sync.")
             return
