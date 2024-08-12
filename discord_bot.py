@@ -11,7 +11,6 @@ from utils import process_message_with_context, save_message, get_relevant_summa
 from api_client import update_agent_knowledge, fetch_recent_conversations
 from game_state_manager import GameStateManager
 from shared_utils import logger
-from kb_manager import KBManager
 from datetime import datetime
 import json
 import traceback
