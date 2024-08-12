@@ -156,13 +156,13 @@ def get_user_sentiment(user_id):
         return user.overall_sentiment if user else 0.0
 
 import discord
-import asyncio
+import os
 
 # Create an instance of Intents
 intents = discord.Intents.default()
-intents.messages = True  # Enable the message intent if you want to receive message events
-intents.guilds = True  # Enable guild-related events
-intents.members = True  # Enable member-related events
+intents.messages = True
+intents.guilds = True
+intents.members = True
 
 client = discord.Client(intents=intents)
 
@@ -179,17 +179,16 @@ async def shutdown_bot():
     print("Shutting down...")
     await client.close()
 
-try:
-    client.run('YOUR_TOKEN')
-except Exception as e:
-    print(f"Error: {e}")
-finally:
-    print("Bot has been shut down.")
+async def run_discord_bot():
+    token = os.environ.get('DISCORD_TOKEN')
+    print(f"Using token: {token}")  # Debugging line
+    await client.start(token)
 
 import asyncio
-from discord_bot import run_discord_bot
 
 def main():
+    from discord_bot import run_discord_bot  # Import here to avoid circular import
+
     # Create a new event loop
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
