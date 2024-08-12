@@ -59,21 +59,28 @@ if __name__ == "__main__":
 async def scheduled_sync():
     while True:
         try:
-            # Ensure all asynchronous calls are properly awaited
+            # Your asynchronous task here
             await some_async_task()  # Example task
         except GeneratorExit:
-            # Handle cleanup if needed
-            break
+            logger.info("Scheduled sync task is being cancelled.")
+            break  # Exit the loop on cancellation
         except Exception as e:
             logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
         await asyncio.sleep(300)  # Sleep to prevent tight loops
+
+def signal_handler():
+    logger.info("Received shutdown signal. Closing bots...")
+    for task in asyncio.all_tasks():
+        task.cancel()  # Cancel pending tasks
+    asyncio.get_event_loop().stop()
 
 async def fetch_data(url):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             return await response.json()  # Await the response here
 
-# Ensure any method calling fetch_data(url) is also awaited
 async def main():
-    data = await fetch_data("https://api.example.com/data")
-    print(data)
+    try:
+        await asyncio.gather(discord_task, twitch_task, sync_task)
+    except asyncio.CancelledError:
+        logger.info("Main task was cancelled.")
