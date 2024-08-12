@@ -115,6 +115,9 @@ def update_user_reputations():
                 if user.reputation is None:
                     user.reputation = 50  # Set a default value if not initialized
 
+                # Log before updating reputation
+                logger.info(f"Before Update - User: {user.username}, Reputation: {user.reputation}")
+
                 if user.role == "Black Hat":
                     if user.overall_sentiment > 50:  # Good behavior
                         user.reputation -= 2  # Punish for good behavior
@@ -135,8 +138,16 @@ def update_user_reputations():
 
                 # Ensure reputation stays within bounds
                 user.reputation = max(0, min(user.reputation, 100))
-                logger.info(f"New Reputation for user: {user.username}, Updated Reputation: {user.reputation}")
+                logger.info(f"After Update - User: {user.username}, Reputation: {user.reputation}")
     logger.info("User reputations updated")
+
+def get_user_reputation(user_id):
+    with session_scope() as session:
+        user = session.query(UserEngagement).filter_by(user_id=user_id).first()
+        if user:
+            logger.info(f"Retrieved Reputation for User: {user.username}, Reputation: {user.reputation}")
+            return user.reputation
+        return None
 
 def purge_old_messages(days_to_keep=30):
     with session_scope() as session:
