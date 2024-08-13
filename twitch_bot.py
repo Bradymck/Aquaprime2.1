@@ -5,7 +5,7 @@ import asyncio
 from colorama import Fore, Style
 from utils import process_message_with_context, save_message, get_relevant_summary
 from shared_utils import logger, print_header, COLORS
-from asynciolimiter import AsyncLimiter  # Import AsyncLimiter
+from aiolimiter import AsyncLimiter  # Import AsyncLimiter
 
 # Aqua Prime themed emojis
 AQUA_EMOJIS = ["🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"]
