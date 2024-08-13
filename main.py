@@ -15,6 +15,7 @@ from database import init_db
 from shared_utils import logger, log_info
 from game_state_manager import GameStateManager
 from plugin_manager import PluginManager
+from config import check_secrets, initialize_openai_client  # Add this line
 
 # Load environment variables
 load_dotenv()
