@@ -9,7 +9,9 @@ from shared_utils import logger, log_info
 # List of required Replit secrets
 required_secrets = [
     'DISCORD_TOKEN', 'DISCORD_GUILD_ID', 'TWITCH_IRC_TOKEN',
-    'TWITCH_CLIENT_ID', 'TWITCH_CHANNEL', 'TWITCH_NICK', 'OPENAI_API_KEY'
+    'TWITCH_CLIENT_ID', 'TWITCH_CHANNEL', 'TWITCH_NICK', 'OPENAI_API_KEY',
+    'PLAY_AI_API_KEY', 'PLAY_AI_USER_ID', 'AGENT_ID', 'PLAY_AI_API_URL',
+    'DISCORD_APPLICATION_ID'  # Add this line
 ]
 
 # Check for missing Replit secrets

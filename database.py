@@ -1,5 +1,5 @@
 import logging
-from sqlalchemy import Column, DateTime, Float, Integer, String, JSON, ForeignKey, func
+from sqlalchemy import Column, DateTime, Float, Integer, String, JSON, ForeignKey, func, Boolean, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import QueuePool
@@ -32,7 +32,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 Base = declarative_base()
-engine = create_async_engine('sqlite+aiosqlite:///unified_chat_memory.db', echo=True)
+engine = create_async_engine('sqlite+aiosqlite:///your_database.db', echo=True)
 AsyncSessionMaker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 @asynccontextmanager
@@ -50,7 +50,22 @@ async def session_scope():
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    await add_is_user_column()
     logger.info("Database initialized")
+
+async def add_is_user_column():
+    async with engine.begin() as conn:
+        # Check if the column exists
+        result = await conn.execute(text("PRAGMA table_info(messages)"))
+        columns = result.fetchall()
+        column_names = [column[1] for column in columns]
+        
+        if 'is_user' not in column_names:
+            # Add the column if it doesn't exist
+            await conn.execute(text("ALTER TABLE messages ADD COLUMN is_user BOOLEAN"))
+            logger.info("Added 'is_user' column to messages table")
+        else:
+            logger.info("'is_user' column already exists in messages table")
 
 async def cleanup_old_messages(days=30):
     async with session_scope() as session:
@@ -80,6 +95,7 @@ class Message(Base):
     username = Column(String)
     sentiment = Column(Float)
     timestamp = Column(DateTime, default=datetime.utcnow)
+    is_user = Column(Boolean, default=True)
 
 
 class UserEngagement(Base):

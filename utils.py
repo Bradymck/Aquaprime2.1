@@ -3,16 +3,15 @@ from functools import lru_cache
 from openai import AsyncOpenAI
 import os
 from shared_utils import logger, log_error
+from database import session_scope, Message
+from sqlalchemy import select
+from datetime import datetime
 
 @lru_cache(maxsize=100)
-def cached_generate_response(prompt):
-    return asyncio.run(generate_response_with_openai(prompt))
+async def cached_generate_response(prompt):
+    return await generate_response_with_openai(prompt)
 
 async def generate_response_with_openai(prompt):
-    cached_response = cached_generate_response(prompt)
-    if cached_response:
-        return cached_response
-
     logger.info(f"Prompt being sent to OpenAI: {prompt[:50]}...")
     client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -34,7 +33,7 @@ async def generate_response_with_openai(prompt):
 async def process_message_with_context(prompt, user_id, platform, conversation_id):
     context = await get_relevant_context(user_id, platform, conversation_id)
     full_prompt = f"{context}\n\nUser: {prompt}\n\nAI:"
-    return await generate_response_with_openai(full_prompt)
+    return await cached_generate_response(full_prompt)
 
 async def save_message(content, platform, user_id, username, is_user=True):
     async with session_scope() as session:
@@ -63,6 +62,7 @@ async def get_relevant_context(user_id, platform, conversation_id):
             context += f"{'User' if msg.is_user else 'AI'}: {msg.content}\n"
         
         return context
+
 
 async def get_relevant_summary(user_id, platform, conversation_id):
     # Implement summary retrieval logic here

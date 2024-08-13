@@ -10,36 +10,23 @@ from discord import Intents
 import aiofiles
 import signal
 from twitch_bot import run_twitch_bot
-from discord_bot import run_discord_bot, bot, DiscordBot
+from discord_bot import run_discord_bot, bot
 from database import init_db
 from shared_utils import logger, log_info
 from game_state_manager import GameStateManager
 from plugin_manager import PluginManager
 from config import check_secrets, initialize_openai_client
+import subprocess
+import sys
 
 # Load environment variables
 load_dotenv()
 
-# Set up Discord bot
-intents = Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents, application_id=os.getenv('DISCORD_APPLICATION_ID'))
-
-# List of required Replit secrets
-required_secrets = [
-    'DISCORD_TOKEN', 'DISCORD_GUILD_ID', 'TWITCH_IRC_TOKEN',
-    'TWITCH_CLIENT_ID', 'TWITCH_CHANNEL', 'TWITCH_NICK', 'OPENAI_API_KEY'
-]
-
-# Check for missing Replit secrets
-missing_secrets = [secret for secret in required_secrets if secret not in os.environ]
-if missing_secrets:
-    logger.error(f"Missing required Replit secrets: {', '.join(missing_secrets)}")
-    raise SystemExit(f"Missing required Replit secrets: {', '.join(missing_secrets)}")
-logger.info(f"Replit secrets set: {', '.join(required_secrets)}")
+# Check for missing secrets
+check_secrets()
 
 # Initialize OpenAI client
-client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
+client = initialize_openai_client()
 
 async def generate_response(prompt):
     try:
@@ -57,17 +44,6 @@ async def generate_response(prompt):
     except Exception as e:
         logger.error(f"OpenAI API error: {e}")
         return "Sorry, I encountered an error."
-
-async def run_discord_bot():
-    try:
-        await bot.add_cog(DiscordBot(bot))
-        await bot.tree.sync()  # Ensure the commands are synced
-        await bot.start(os.getenv('DISCORD_TOKEN'))
-    except Exception as e:
-        logger.error(f"Error running Discord bot: {e}")
-    finally:
-        if not bot.is_closed():
-            await bot.close()
 
 async def shutdown(signal, loop):
     log_info(f"Received exit signal {signal.name}...")
@@ -97,9 +73,9 @@ async def main():
         log_info("Database initialized")
 
         game_state_manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
-        sync_task = asyncio.create_task(game_state_manager.scheduled_sync())
-        discord_task = asyncio.create_task(run_discord_bot())
-        twitch_task = asyncio.create_task(run_twitch_bot_wrapper())
+        sync_task = game_state_manager.scheduled_sync()
+        discord_task = run_discord_bot()
+        twitch_task = run_twitch_bot_wrapper()
 
         plugin_manager = PluginManager()
         plugin_manager.load_plugins()
@@ -109,7 +85,7 @@ async def main():
     except asyncio.CancelledError:
         logger.info("Main task was cancelled.")
     except Exception as e:
-        logger.error(f"An error occurred in the main function: {e}")
+        logger.error(f"An error occurred in the main function: {e}", exc_info=True)
     finally:
         await bot.close()
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
@@ -119,11 +95,4 @@ async def main():
         logger.info("All tasks have been cancelled and cleaned up.")
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(shutdown(s, loop)))
-    try:
-        loop.run_until_complete(main())
-    finally:
-        loop.close()
-        log_info("Successfully shutdown the Aqua Prime bot.")
+    asyncio.run(main())

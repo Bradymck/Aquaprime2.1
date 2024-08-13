@@ -6,11 +6,25 @@ from game_state_manager import GameStateManager
 from utils import process_message_with_context, save_message, get_relevant_summary
 from shared_utils import logger, handle_errors
 from config import initialize_openai_client
+from dotenv import load_dotenv
+
+load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.guilds = True
+intents.messages = True
 
-bot = commands.Bot(command_prefix="!", intents=intents, application_id=os.getenv('DISCORD_APPLICATION_ID'))
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents,
+    application_id=os.getenv('DISCORD_APPLICATION_ID')
+)
+
+@bot.event
+async def on_ready():
+    print(f'{bot.user} has connected to Discord!')
+    await bot.tree.sync()
 
 game_state_manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
 openai_client = initialize_openai_client()
@@ -29,7 +43,11 @@ class DiscordBot(commands.Cog):
             ai_response = await process_message_with_context(message, user_id, 'discord', conversation_id)
             response = f"AI: {ai_response}\n"
 
-            await interaction.response.send_message(response)
+            if not interaction.response.is_done():
+                await interaction.response.send_message(response)
+            else:
+                await interaction.followup.send(response)
+
             await save_message(message, 'discord', user_id, interaction.user.name, is_user=True)
             await save_message(ai_response, 'discord', user_id, 'AI', is_user=False)
 
@@ -37,7 +55,10 @@ class DiscordBot(commands.Cog):
 
         except Exception as e:
             logger.error(f"Chat error for user {user_id}: {e}")
-            await interaction.response.send_message("An error occurred while processing your request.")
+            if not interaction.response.is_done():
+                await interaction.response.send_message("An error occurred while processing your request.")
+            else:
+                await interaction.followup.send("An error occurred while processing your request.")
 
     @discord.app_commands.command(name='help', description='Display available commands')
     async def help_command(self, interaction: discord.Interaction):
@@ -49,80 +70,12 @@ class DiscordBot(commands.Cog):
         help_text = "\n".join([f"!{cmd}: {desc}" for cmd, desc in commands])
         await interaction.response.send_message(f"Available commands:\n{help_text}")
 
-@bot.event
-async def on_ready():
-    try:
-        await bot.tree.sync()
-        logger.info(f"Logged in as {bot.user} (ID: {bot.user.id})")
-    except Exception as e:
-        logger.error(f"Error syncing commands: {e}")
-
 async def run_discord_bot():
     try:
         await bot.add_cog(DiscordBot(bot))
-        await bot.tree.sync()  # Ensure the commands are synced
-        await bot.start(os.getenv('DISCORD_TOKEN'))
+        await bot.start(os.getenv('DISCORD_BOT_TOKEN'))
     except Exception as e:
         logger.error(f"Error running Discord bot: {e}")
     finally:
         if not bot.is_closed():
             await bot.close()
-
-async def shutdown(signal, loop):
-    log_info(f"Received exit signal {signal.name}...")
-    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-    for task in tasks:
-        task.cancel()
-    log_info(f"Cancelling {len(tasks)} outstanding tasks")
-    await asyncio.gather(*tasks, return_exceptions=True)
-    loop.stop()
-
-async def run_twitch_bot_wrapper():
-    try:
-        await run_twitch_bot()
-    except Exception as e:
-        logger.error(f"Error running Twitch bot: {e}")
-    finally:
-        # Add any cleanup code for Twitch bot if necessary
-        pass
-
-async def main():
-    log_info("Aqua Prime Bot Starting")
-    check_secrets()
-    openai_client = initialize_openai_client()
-
-    try:
-        await init_db()
-        log_info("Database initialized")
-
-        game_state_manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
-        sync_task = asyncio.create_task(game_state_manager.scheduled_sync())
-        discord_task = asyncio.create_task(run_discord_bot())
-        twitch_task = asyncio.create_task(run_twitch_bot_wrapper())
-
-        plugin_manager = PluginManager()
-        plugin_manager.load_plugins()
-        await plugin_manager.initialize_plugins(bot)
-
-        await asyncio.gather(sync_task, discord_task, twitch_task)
-    except asyncio.CancelledError:
-        logger.info("Main task was cancelled.")
-    except Exception as e:
-        logger.error(f"An error occurred in the main function: {e}")
-    finally:
-        await bot.close()
-        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-        for task in tasks:
-            task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
-        logger.info("All tasks have been cancelled and cleaned up.")
-
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(shutdown(s, loop)))
-    try:
-        loop.run_until_complete(main())
-    finally:
-        loop.close()
-        log_info("Successfully shutdown the Aqua Prime bot.")
