@@ -1,4 +1,4 @@
-# Aqua Prime --
+# Aqua Prime 
 _Aqua Prime_ is an integrated bot suite designed to enhance online community interactions on platforms such as Discord and Twitch. By leveraging machine learning, natural language processing, and API integrations, Aqua Prime aims to deliver a rich interactive experience to users.💧
 
 ![Aqua Prime](https://i.imgur.com/ba0mt4G.png)

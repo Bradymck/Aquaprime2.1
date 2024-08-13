@@ -1,128 +1,71 @@
+import subprocess
 import os
 import logging
-from twitchio.ext import commands
-import asyncio
-from utils import process_message_with_context, save_message, get_relevant_summary
-from shared_utils import logger, handle_errors
-from aiolimiter import AsyncLimiter  # Import AsyncLimiter
 
-required_env_vars = [
-    'TWITCH_IRC_TOKEN', 'TWITCH_CLIENT_ID', 'TWITCH_CHANNEL', 'TWITCH_NICK',
-    'PLAY_AI_API_KEY', 'PLAY_AI_USER_ID', 'AGENT_ID', 'PLAY_AI_API_URL', 'OPENAI_API_KEY'
-]
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Rate limiter: 5 commands per minute
-rate_limiter = AsyncLimiter(5, 60)
-
-class Bot(commands.Bot):
-    def __init__(self):
-        # Check for required environment variables
-        missing_vars = [var for var in required_env_vars if not os.getenv(var)]
-        if missing_vars:
-            raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
-
-        super().__init__(
-            token=os.getenv('TWITCH_IRC_TOKEN'),
-            client_id=os.getenv('TWITCH_CLIENT_ID'),
-            nick=os.getenv('TWITCH_NICK'),
-            prefix='!',
-            initial_channels=[os.getenv('TWITCH_CHANNEL')]
-        )
-        self.conversations = {}
-
-    async def event_ready(self):
-        logger.info(f"Logged in as | {self.nick}")
-
-    async def event_message(self, message):
-        if message.echo:
-            return
-
-        logger.info(f"Message from {message.author.name}: {message.content[:50]}...")
-
-        user_id = str(message.author.id)
-        await save_message(message.content, 'twitch', user_id, message.author.name)
-
-        if message.content.startswith('!'):
-            await self.handle_commands(message)
-
-    @commands.command(name="chat")
-    @handle_errors
-    async def chat_command(self, ctx: commands.Context, *, message: str):
-        async with rate_limiter:  # Use the rate limiter
-            user_id = str(ctx.author.id)
-            conversation_id = self.conversations.get(user_id)
-
-            try:
-                relevant_summary = get_relevant_summary(user_id)
-                summary_context = f"Recent story summary: {relevant_summary}" if relevant_summary else "No recent story summary available."
-
-                prompt = f"{summary_context}\n\nUser message: {message}\n\nPlease respond in the context of the ongoing story:"
-                ai_response = await process_message_with_context(prompt, user_id, 'twitch', conversation_id)
-
-                response = f"AI: {ai_response}"
-                if relevant_summary:
-                    response += f"\n*Story context: {relevant_summary[:100]}..."
-
-                await ctx.send(response)
-                logger.info(f"Successful chat interaction with user {user_id}")
-            except Exception as e:
-                logger.error(f"Error in Twitch chat command for user {user_id}: {e}")
-                await ctx.send("Sorry, an error occurred while processing your request.")
-
-    @commands.command(name="recite")
-    async def recite_command(self, ctx: commands.Context, *, query: str = None):
-        try:
-            summary = get_relevant_summary(str(ctx.author.id), query)
-            if summary:
-                await ctx.send(f"Summary: {summary}")
-                logger.info(f"Summary retrieved for user {ctx.author.id}")
-            else:
-                await ctx.send("Sorry, I couldn't find any relevant summary.")
-                logger.info(f"No summary found for user {ctx.author.id}")
-        except Exception as e:
-            logger.error(f"Error in Twitch recite command for user {ctx.author.id}: {e}")
-            await ctx.send("Sorry, an error occurred while retrieving the summary.")
-
-    @commands.command(name="help")
-    async def help_command(self, ctx: commands.Context):
-        help_text = """
-        Available Aqua Prime commands:
-        !chat <message>: Chat with the AI
-        !recite [query]: Get a summary related to your query or your latest interaction
-        !help: Show this help message
-        """
-        await ctx.send(help_text)
-        logger.info(f"Help command used by user {ctx.author.id}")
-
-    async def log_twitch_activity(self, activity):
-        async with aiofiles.open('twitch_activity.log', mode='a') as f:
-            await f.write(f"{activity}\n")
-
-    async def close(self):
-        await super().close()
-        logger.info("Twitch bot closed")
-
-async def run_twitch_bot():
+def run_command(command):
+    """Run a shell command and handle errors."""
     try:
-        logger.info("Aqua Prime Twitch Bot Starting")
-        bot = Bot()
-        await bot.start()
-    except Exception as e:
-        logger.error(f"Error running Twitch bot: {e}")
-    finally:
-        logger.info("Twitch bot closed")
+        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Command '{' '.join(command)}' failed with error: {e.stderr}")
+        raise
 
-async def main():
+def sync_repository():
+    """Pull the latest changes from the remote repository."""
+    logger.info("Pulling the latest changes from the remote repository...")
+    run_command(['git', 'pull', '--rebase'])
+
+def get_git_diff():
+    """Get the diff of the staged changes."""
+    return run_command(['git', 'diff', '--cached'])
+
+def generate_commit_message():
+    """Generate a basic commit message."""
+    return "Version update: code changes committed."
+
+def commit_and_push_changes():
+    """Commit and push changes to the remote repository."""
+    # Stage all changes
+    logger.info("Staging all changes...")
+    run_command(['git', 'add', '.'])
+
+    # Get the diff of the staged changes
+    diff = get_git_diff()
+
+    if not diff:
+        logger.info("No changes to commit.")
+        return "No changes to commit."
+
+    # Generate a simple commit message
+    commit_message = generate_commit_message()
+
+    if commit_message:
+        logger.info(f"Generated commit message: {commit_message}")
+        run_command(['git', 'commit', '-m', commit_message])
+
+        # Push changes to the remote repository
+        logger.info("Pushing changes to the remote repository...")
+        run_command(['git', 'push'])
+        return f"Commit and push successful: {commit_message}"
+    else:
+        logger.error("Failed to generate commit message.")
+        return "Failed to generate commit message."
+
+def sync_commit_and_push():
+    """Sync with remote, commit changes, and push to remote."""
     try:
-        twitch_task = asyncio.create_task(run_twitch_bot())
-        await twitch_task
-    except asyncio.CancelledError:
-        logger.info("Main task cancelled, cancelling Twitch bot task.")
-        twitch_task.cancel()
-        await twitch_task  # Ensure the task is awaited after cancellation
+        sync_repository()
+        result = commit_and_push_changes()
+        logger.info(result)
     except Exception as e:
-        logger.error(f"Unexpected error running Twitch bot: {e}")
+        logger.error(f"Error during sync, commit, or push: {e}")
 
 if __name__ == "__main__":
-    logger.info("Aqua Prime Twitch Bot Starting")
-    asyncio.run(main())
+    logger.info("Starting sync, commit, and push process...")
+    sync_commit_and_push()
+    logger.info("Process completed.")
