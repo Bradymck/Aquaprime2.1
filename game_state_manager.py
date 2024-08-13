@@ -56,10 +56,28 @@ class GameStateManager:
         except Exception as e:
             logger.error(f"Error saving game state: {e}")
 
-    async def periodic_save(self):
-        while True:
-            await asyncio.sleep(300)  # Save every 5 minutes
-            await self.save_game_state()
+    async def scheduled_sync(self):
+        try:
+            while True:
+                await self.save_game_state()
+                await asyncio.sleep(300)  # Run every 5 minutes
+        except asyncio.CancelledError:
+            logger.info("Scheduled sync task was cancelled.")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
+
+    def update_agent_knowledge(self, user_id, data):
+        if user_id not in self.knowledge_base:
+            self.knowledge_base[user_id] = []
+        self.knowledge_base[user_id].append(data)
+
+    def get_faction_info(self, user_id):
+        # Implement faction info retrieval logic here
+        return "Faction info placeholder"
+
+    def get_game_status(self):
+        # Implement game status retrieval logic here
+        return "Game status placeholder"
 
     def clean_old_knowledge(self, max_age_days=30):
         current_time = datetime.now()
@@ -68,53 +86,3 @@ class GameStateManager:
         for key in old_entries:
             del self.knowledge_base[key]
         logger.info(f"Cleaned {len(old_entries)} old knowledge entries")
-
-    async def scheduled_sync(self):
-        try:
-            save_task = asyncio.create_task(self.periodic_save())
-            while True:
-                # 🔄 Fetch recent conversations from play.ai
-                conversations = await fetch_recent_conversations()
-                for conv in conversations:
-                    # 📜 Retrieve the transcript for each conversation
-                    transcript = await fetch_conversation_transcript(conv['id'])
-                    if transcript:
-                        # 💾 Store the transcript in the database
-                        await self.store_transcript(conv['id'], transcript)
-                
-                # 🕐 Wait for 5 minutes before the next sync
-                await asyncio.sleep(300)
-                self.clean_old_knowledge()
-        except asyncio.CancelledError:
-            # 🛑 Handle cancellation of the sync task
-            logger.info("Scheduled sync task was cancelled.")
-        except Exception as e:
-            # ❗ Log any unexpected errors
-            logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
-        finally:
-            save_task.cancel()
-            await save_task
-
-    async def store_transcript(self, conversation_id, transcript):
-        async with session_scope() as session:
-            for message in transcript:
-                # 📝 Create a new ConversationMessage object for each message in the transcript
-                new_message = ConversationMessage(
-                    conversation_id=conversation_id,
-                    role=message['role'],
-                    content=message['content'],
-                    timestamp=datetime.fromisoformat(message['timestamp'].replace('Z', '+00:00'))
-                )
-                # ➕ Add the new message to the database session
-                session.add(new_message)
-            # ✅ Commit all new messages to the database
-            await session.commit()
-
-    # 🔮 Future enhancement: Implement vector database synchronization
-    # TODO: Add logic to sync with a vector database for improved search and retrieval
-
-def signal_handler():
-    logger.info("Received shutdown signal. Closing bots...")
-    for task in asyncio.all_tasks():
-        task.cancel()  # Cancel pending tasks
-    asyncio.get_event_loop().stop()  # Stop the event loop

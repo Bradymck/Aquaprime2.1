@@ -5,6 +5,7 @@ from discord.ext import commands
 from game_state_manager import GameStateManager
 from utils import process_message_with_context, save_message, get_relevant_summary
 from shared_utils import logger, handle_errors
+from config import initialize_openai_client
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -12,6 +13,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 game_state_manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
+openai_client = initialize_openai_client()
 
 class DiscordBot(commands.Cog):
     def __init__(self, bot):
@@ -70,12 +72,10 @@ class DiscordBot(commands.Cog):
 
 async def run_discord_bot():
     try:
+        await bot.add_cog(DiscordBot(bot))
         await bot.start(os.getenv('DISCORD_TOKEN'))
     except Exception as e:
         logger.error(f"Error running Discord bot: {e}")
     finally:
         if not bot.is_closed():
             await bot.close()
-
-async def setup(bot):
-    await bot.add_cog(DiscordBot(bot))

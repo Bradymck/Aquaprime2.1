@@ -81,7 +81,8 @@ async def shutdown(signal, loop):
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
     [task.cancel() for task in tasks]
     log_info(f"Cancelling {len(tasks)} outstanding tasks")
-    await async
+    await asyncio.gather(*tasks, return_exceptions=True)
+    loop.stop()
 
 def signal_handler():
     log_info("Received shutdown signal. Closing bots...")
@@ -120,7 +121,14 @@ async def main():
         logger.info("All tasks have been cancelled and cleaned up.")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(shutdown(s, loop)))
+    try:
+        loop.run_until_complete(main())
+    finally:
+        loop.close()
+        log_info("Successfully shutdown the Aqua Prime bot.")
 
 # Add this function to log commands asynchronously
 async def log_command(command):

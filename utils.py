@@ -10,7 +10,7 @@ async def generate_response_with_openai(prompt):
     if cached_response:
         return cached_response
 
-    logger.info(f"Prompt being sent to OpenAI: {prompt}")
+    logger.info(f"Prompt being sent to OpenAI: {prompt[:50]}...")
     client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     try:
@@ -23,7 +23,6 @@ async def generate_response_with_openai(prompt):
             frequency_penalty=0.0,
             presence_penalty=0.0
         )
-        cached_generate_response.cache_clear()  # Clear cache periodically to avoid stale responses
         return response.choices[0].message.content.strip()
     except Exception as e:
         log_error(f"Error generating response from OpenAI: {e}")
@@ -57,7 +56,7 @@ async def save_message(content, platform, user_id, username, is_user=True):
             platform=platform,
             user_id=user_id,
             username=username,
-            is_user=is_user
+            is_user=is_user,
+            timestamp=datetime.utcnow()
         )
         session.add(message)
-        await session.commit()
