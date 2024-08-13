@@ -1,41 +1,24 @@
 import logging
 from datetime import datetime, timedelta
-from colorama import init, Fore, Back, Style
 from openai import AsyncOpenAI  # Use AsyncOpenAI
 import os
 from database import session_scope, Message, UserEngagement, TranscriptSummary  # Add this import
-
-# Initialize colorama for cross-platform color support
-init(autoreset=True)
 
 # Set up logger
 logger = logging.getLogger('UnifiedBot')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def print_header(message):
-    print(f"{Fore.CYAN}=== {message} ==={Style.RESET_ALL}")
-
-# Expanded COLORS dictionary
-COLORS = {
-    'header': Fore.WHITE + Back.BLUE,
-    'info': Fore.BLACK + Back.CYAN,
-    'success': Fore.BLACK + Back.GREEN,
-    'warning': Fore.BLACK + Back.YELLOW,
-    'error': Fore.WHITE + Back.RED,
-    'reset': Style.RESET_ALL
-}
-
 def log_info(message):
-    logger.info(f"{COLORS['info']}{message}{COLORS['reset']}")
+    logger.info(message)
 
 def log_success(message):
-    logger.info(f"{COLORS['success']}{message}{COLORS['reset']}")
+    logger.info(message)
 
 def log_warning(message):
-    logger.warning(f"{COLORS['warning']}{message}{COLORS['reset']}")
+    logger.warning(message)
 
 def log_error(message):
-    logger.error(f"{COLORS['error']}{message}{COLORS['reset']}")
+    logger.error(message)
 
 async def generate_response_with_openai(prompt):
     logger.info(f"Prompt being sent to OpenAI: {prompt}")

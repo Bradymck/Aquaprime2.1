@@ -5,31 +5,9 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import QueuePool
 from contextlib import asynccontextmanager
 from datetime import datetime
-from colorama import init, Fore, Style
 import random
 import os
 
-
-# Initialize colorama
-init(autoreset=True)
-
-# Aqua Prime themed emojis and symbols
-AQUA_EMOJIS = ["🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"]
-
-class AquaPrimeFormatter(logging.Formatter):
-    def format(self, record):
-        aqua_colors = [Fore.CYAN, Fore.BLUE, Fore.GREEN]
-        color = random.choice(aqua_colors)
-        emoji = random.choice(AQUA_EMOJIS)
-
-        log_message = super().format(record)
-        return f"{color}{Style.BRIGHT}{emoji} {log_message}{Style.RESET_ALL}"
-
-logger = logging.getLogger('database')
-handler = logging.StreamHandler()
-handler.setFormatter(AquaPrimeFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
 
 Base = declarative_base()
 engine = create_async_engine('sqlite+aiosqlite:///unified_chat_memory.db', echo=True)
@@ -103,5 +81,12 @@ class Conversation(Base):
     end_time = Column(DateTime, nullable=True)
     summary = Column(String)
     messages = relationship("ConversationMessage", order_by="ConversationMessage.timestamp", back_populates="conversation")
+
+logger = logging.getLogger('database')
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 logger.info("Aqua Prime Database Initialized")

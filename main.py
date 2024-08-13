@@ -120,7 +120,6 @@ if __name__ == "__main__":
     logger.info("Aqua Prime Bot Initializing")
     loop = asyncio.get_event_loop()
 
-    # Set up signal handlers
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, signal_handler)
 
@@ -129,9 +128,7 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Error running bots: {e}")
     finally:
-        logger.info(
-            f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Shutdown Complete{Style.RESET_ALL}"
-        )
+        logger.info("Aqua Prime Bot Shutdown Complete")
 
 # Make sure this is after main to avoid the circular import issue
 intents = Intents.default()  # Define intents

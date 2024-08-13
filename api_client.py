@@ -9,15 +9,10 @@ from database import session_scope, Conversation, ConversationMessage
 from typing import List, Dict, Any, Optional
 from asynciolimiter import Limiter
 from datetime import datetime
-from colorama import init, Fore, Back, Style
-
-# Initialize colorama
-init(autoreset=True)
 
 # Initialize logging
 logger = logging.getLogger('UnifiedBot')
 handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -134,13 +129,9 @@ async def scheduled_sync():
                             message_count += len(messages)
                         else:
                             update_count += 1
-                    except Exception as e:
-                        logger.error(f"Sync error: {str(e)}")
-
+                    except Exception as fetch_error:
+                        logger.error(f"Error processing conversation {conv['id']}: {fetch_error}")
             logger.info(f"Sync complete. New conversations: {new_count}, Updated: {update_count}, Messages: {message_count}")
             await asyncio.sleep(300)
-
-    except asyncio.CancelledError:
-        logger.info("Scheduled sync task was cancelled.")
     except Exception as e:
         logger.error(f"An unexpected error occurred in scheduled_sync: {e}")

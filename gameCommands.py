@@ -4,39 +4,17 @@ import asyncio
 import signal
 import random
 from datetime import datetime
-from colorama import init, Fore, Style
 from database import init_db
 from api_client import scheduled_sync
 from openai import AsyncOpenAI  # Ensure this is AsyncOpenAI
 from shared_utils import print_header, log_info
 import aiofiles  # Add this import
 
-# Initialize colorama
-init(autoreset=True)
-
-# Aqua Prime themed emojis and symbols💧
-AQUA_EMOJIS = [
-    "🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"
-]
-
-
-class AquaPrimeFormatter(logging.Formatter):
-
-    def format(self, record):
-        aqua_colors = [Fore.CYAN, Fore.BLUE, Fore.GREEN]
-        color = random.choice(aqua_colors)
-        emoji = random.choice(AQUA_EMOJIS)
-
-        log_message = super().format(record)
-        return f"{color}{Style.BRIGHT}{emoji} {log_message}{Style.RESET_ALL}"
-
-
-# Set up logging
+# Initialize logging
 logger = logging.getLogger('UnifiedBot')
 handler = logging.StreamHandler()
-handler.setFormatter(
-    AquaPrimeFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                       datefmt='%Y-%m-%d %H:%M:%S'))
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
@@ -108,12 +86,7 @@ def signal_handler():
 
 
 if __name__ == "__main__":
-    print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
-    logger.info(
-        f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Initializing{Style.RESET_ALL}"
-    )
-    print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
-
+    logger.info("Aqua Prime Bot Initializing")
     loop = asyncio.get_event_loop()
 
     # Set up signal handlers
@@ -125,12 +98,7 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Error running bots: {e}")
     finally:
-        loop.close()
-        print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
-        logger.info(
-            f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Shutdown Complete{Style.RESET_ALL}"
-        )
-        print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
+        logger.info("Aqua Prime Bot Shutdown Complete")
 
 # Import your commands cog
 from gameCommands import setup
