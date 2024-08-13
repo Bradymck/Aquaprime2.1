@@ -58,7 +58,7 @@ async def run_discord_bot():
     await discord_run()
 
 async def main():
-    print_header("Aqua Prime Bot Starting")
+    log_info("Aqua Prime Bot Starting")
 
     from database import init_db
 
@@ -81,8 +81,9 @@ async def main():
 def signal_handler():
     logger.info("Received shutdown signal. Closing bots...")
     for task in asyncio.all_tasks():
-        task.cancel()
-    asyncio.get_event_loop().stop()
+        task.cancel()  # Cancel pending tasks
+    asyncio.get_event_loop().stop()  # Stop the event loop
+
 
 if __name__ == "__main__":
     logger.info("Aqua Prime Bot Initializing")

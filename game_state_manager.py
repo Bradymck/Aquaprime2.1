@@ -1,6 +1,7 @@
 import json
 import aiohttp
 import asyncio
+from shared_utils import logger
 
 class GameStateManager:
     def __init__(self, repo_path, file_path):
@@ -55,11 +56,9 @@ class GameStateManager:
         try:
             while True:
                 # Your asynchronous task here
-                await some_async_task()  # Example task
                 await asyncio.sleep(300)  # Sleep to prevent tight loops
         except asyncio.CancelledError:
             logger.info("Scheduled sync task was cancelled.")
-            # No need for break here, just exit the loop
         except Exception as e:
             logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
 

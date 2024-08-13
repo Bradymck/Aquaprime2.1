@@ -19,6 +19,9 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
+def log_info(message):
+    logger.info(message)
+
 async def write_to_file(filename, data):
     async with aiofiles.open(filename, mode='w') as f:
         await f.write(data)

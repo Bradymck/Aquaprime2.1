@@ -9,19 +9,15 @@ async def generate_response_with_openai(prompt):
     client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     try:
-        response = await client.Completion.create(
-            engine="gpt-3.5-turbo-instruct",
-            prompt=prompt,
+        response = await client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
             max_tokens=150
         )
-        return response.choices[0].text.strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         log_error(f"Error generating response from OpenAI: {e}")
         return "An error occurred while generating the response."
-
-async def process_message_with_context(prompt, user_id, platform, conversation_id):
-    # Implement this function to process messages with context
-    return await generate_response_with_openai(prompt)
 
 def get_relevant_summary(user_id):
     # Implement this function to get relevant summary for a user
