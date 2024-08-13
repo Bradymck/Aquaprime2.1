@@ -121,7 +121,8 @@ async def main():
 async def shutdown(signal, loop):
     log_info(f"Received exit signal {signal.name}...")
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-    [task.cancel() for task in tasks]
+    for task in tasks:
+        task.cancel()
     log_info(f"Cancelling {len(tasks)} outstanding tasks")
     await asyncio.gather(*tasks, return_exceptions=True)
     loop.stop()
