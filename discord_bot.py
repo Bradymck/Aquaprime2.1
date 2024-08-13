@@ -94,3 +94,35 @@ async def main():
     try:
         await init_db()
         log_info("Database initialized")
+
+        game_state_manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
+        sync_task = asyncio.create_task(game_state_manager.scheduled_sync())
+        discord_task = asyncio.create_task(run_discord_bot())
+        twitch_task = asyncio.create_task(run_twitch_bot_wrapper())
+
+        plugin_manager = PluginManager()
+        plugin_manager.load_plugins()
+        await plugin_manager.initialize_plugins(bot)
+
+        await asyncio.gather(sync_task, discord_task, twitch_task)
+    except asyncio.CancelledError:
+        logger.info("Main task was cancelled.")
+    except Exception as e:
+        logger.error(f"An error occurred in the main function: {e}")
+    finally:
+        await bot.close()
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        logger.info("All tasks have been cancelled and cleaned up.")
+
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(shutdown(s, loop)))
+    try:
+        loop.run_until_complete(main())
+    finally:
+        loop.close()
+        log_info("Successfully shutdown the Aqua Prime bot.")
