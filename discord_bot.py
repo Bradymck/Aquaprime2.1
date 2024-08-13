@@ -1,5 +1,6 @@
 import os
 import logging
+import discord
 from discord.ext import commands
 from game_state_manager import GameStateManager
 from utils import process_message_with_context, save_message, get_relevant_summary

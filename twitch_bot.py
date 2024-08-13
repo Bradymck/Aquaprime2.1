@@ -68,7 +68,10 @@ def sync_commit_and_push():
 async def run_twitch_bot():
     # Implement the Twitch bot functionality here
     logger.info("Twitch bot is running")
-    # Add your Twitch bot logic
+    # Add your Twitch bot logic here
+    while True:
+        # Placeholder for Twitch bot main loop
+        await asyncio.sleep(60)  # Sleep for 60 seconds before next iteration
 
 if __name__ == "__main__":
     logger.info("Starting sync, commit, and push process...")

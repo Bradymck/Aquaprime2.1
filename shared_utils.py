@@ -27,7 +27,7 @@ async def write_to_file(filename, data):
         await f.write(data)
 
 def log_error(message):
-    logger.error(message)  # Properly indented now
+    logger.error(message)
 
 def log_warning(message):
     logger.warning(message)
