@@ -1,10 +1,9 @@
 import os
 import logging
-import discord
 from discord.ext import commands
 from game_state_manager import GameStateManager
 from utils import process_message_with_context, save_message, get_relevant_summary
-from shared_utils import logger
+from shared_utils import logger, handle_errors
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,6 +17,7 @@ class DiscordBot(commands.Cog):
         self.bot = bot
 
     @discord.app_commands.command(name='chat', description='Chat with the AI')
+    @handle_errors
     async def chat(self, interaction: discord.Interaction, *, message: str):
         user_id = str(interaction.user.id)
         conversation_id = None  # Example: You might track conversation IDs differently

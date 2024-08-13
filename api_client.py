@@ -1,22 +1,13 @@
-import logging
 import aiohttp
 import asyncio
 import os
-import asyncio
 from contextlib import asynccontextmanager
 from sqlalchemy import select
 from database import session_scope, Conversation, ConversationMessage
 from typing import List, Dict, Any, Optional
 from asynciolimiter import Limiter
 from datetime import datetime
-
-# Initialize logging
-logger = logging.getLogger('UnifiedBot')
-handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+from shared_utils import logger
 
 # Environment variables
 PLAY_AI_API_URL = os.getenv('PLAY_AI_API_URL', 'https://api.play.ai/api/v1')
@@ -40,16 +31,11 @@ async def make_api_request(url: str, headers: Dict[str, str], params: Optional[D
                             return None
                         else:
                             logger.error(f"API request failed: {response.status}")
-                            if attempt < max_retries - 1:
-                                await asyncio.sleep(2 ** attempt)  # Exponential backoff
-                            else:
-                                return None
             except Exception as e:
                 logger.error(f"Error making API request: {str(e)}")
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(2 ** attempt)
-                else:
-                    return None
+            if attempt < max_retries - 1:
+                await asyncio.sleep(2 ** attempt)
+        return None
 
 async def fetch_recent_conversations() -> List[Dict[str, Any]]:
     url = f"{PLAY_AI_API_URL}/agents/{AGENT_ID}/conversations"

@@ -3,7 +3,7 @@ import logging
 from twitchio.ext import commands
 import asyncio
 from utils import process_message_with_context, save_message, get_relevant_summary
-from shared_utils import logger
+from shared_utils import logger, handle_errors
 from aiolimiter import AsyncLimiter  # Import AsyncLimiter
 
 required_env_vars = [
@@ -46,6 +46,7 @@ class Bot(commands.Bot):
             await self.handle_commands(message)
 
     @commands.command(name="chat")
+    @handle_errors
     async def chat_command(self, ctx: commands.Context, *, message: str):
         async with rate_limiter:  # Use the rate limiter
             user_id = str(ctx.author.id)
