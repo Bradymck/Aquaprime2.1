@@ -2,13 +2,10 @@ import os
 import logging
 from twitchio.ext import commands
 import asyncio
-from colorama import Fore, Style
 from utils import process_message_with_context, save_message, get_relevant_summary
-from shared_utils import logger, print_header, COLORS
+from shared_utils import logger
 from aiolimiter import AsyncLimiter  # Import AsyncLimiter
 
-# Aqua Prime themed emojis
-AQUA_EMOJIS = ["🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"]
 required_env_vars = [
     'TWITCH_IRC_TOKEN', 'TWITCH_CLIENT_ID', 'TWITCH_CHANNEL', 'TWITCH_NICK',
     'PLAY_AI_API_KEY', 'PLAY_AI_USER_ID', 'AGENT_ID', 'PLAY_AI_API_URL', 'OPENAI_API_KEY'
@@ -22,7 +19,7 @@ class Bot(commands.Bot):
         # Check for required environment variables
         missing_vars = [var for var in required_env_vars if not os.getenv(var)]
         if missing_vars:
-            raise ValueError(f"🚫 Missing required environment variables: {', '.join(missing_vars)}")
+            raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
         super().__init__(
             token=os.getenv('TWITCH_IRC_TOKEN'),
@@ -34,13 +31,13 @@ class Bot(commands.Bot):
         self.conversations = {}
 
     async def event_ready(self):
-        logger.info(f"🎮 Logged in as | {self.nick}")
+        logger.info(f"Logged in as | {self.nick}")
 
     async def event_message(self, message):
         if message.echo:
             return
 
-        logger.info(f"📨 Message from {message.author.name}: {message.content[:50]}...")
+        logger.info(f"Message from {message.author.name}: {message.content[:50]}...")
 
         user_id = str(message.author.id)
         await save_message(message.content, 'twitch', user_id, message.author.name)
@@ -61,40 +58,40 @@ class Bot(commands.Bot):
                 prompt = f"{summary_context}\n\nUser message: {message}\n\nPlease respond in the context of the ongoing story:"
                 ai_response = await process_message_with_context(prompt, user_id, 'twitch', conversation_id)
 
-                response = f"🤖 AI: {ai_response}"
+                response = f"AI: {ai_response}"
                 if relevant_summary:
-                    response += f"\n📜 *Story context: {relevant_summary[:100]}...*"
+                    response += f"\n*Story context: {relevant_summary[:100]}..."
 
                 await ctx.send(response)
-                logger.info(f"💬 Successful chat interaction with user {user_id}")
+                logger.info(f"Successful chat interaction with user {user_id}")
             except Exception as e:
-                logger.error(f"🚫 Error in Twitch chat command for user {user_id}: {e}")
-                await ctx.send("🚫 Sorry, an error occurred while processing your request.")
+                logger.error(f"Error in Twitch chat command for user {user_id}: {e}")
+                await ctx.send("Sorry, an error occurred while processing your request.")
 
     @commands.command(name="recite")
     async def recite_command(self, ctx: commands.Context, *, query: str = None):
         try:
             summary = get_relevant_summary(str(ctx.author.id), query)
             if summary:
-                await ctx.send(f"📚 Summary: {summary}")
-                logger.info(f"📜 Summary retrieved for user {ctx.author.id}")
+                await ctx.send(f"Summary: {summary}")
+                logger.info(f"Summary retrieved for user {ctx.author.id}")
             else:
-                await ctx.send("📭 Sorry, I couldn't find any relevant summary.")
-                logger.info(f"📜 No summary found for user {ctx.author.id}")
+                await ctx.send("Sorry, I couldn't find any relevant summary.")
+                logger.info(f"No summary found for user {ctx.author.id}")
         except Exception as e:
-            logger.error(f"🚫 Error in Twitch recite command for user {ctx.author.id}: {e}")
-            await ctx.send("🚫 Sorry, an error occurred while retrieving the summary.")
+            logger.error(f"Error in Twitch recite command for user {ctx.author.id}: {e}")
+            await ctx.send("Sorry, an error occurred while retrieving the summary.")
 
     @commands.command(name="help")
     async def help_command(self, ctx: commands.Context):
         help_text = """
-        🌊 Available Aqua Prime commands:
-        !chat <message>: 💬 Chat with the AI
-        !recite [query]: 📚 Get a summary related to your query or your latest interaction
-        !help: ℹ️ Show this help message
+        Available Aqua Prime commands:
+        !chat <message>: Chat with the AI
+        !recite [query]: Get a summary related to your query or your latest interaction
+        !help: Show this help message
         """
         await ctx.send(help_text)
-        logger.info(f"ℹ️ Help command used by user {ctx.author.id}")
+        logger.info(f"Help command used by user {ctx.author.id}")
 
     async def log_twitch_activity(self, activity):
         async with aiofiles.open('twitch_activity.log', mode='a') as f:
@@ -102,19 +99,17 @@ class Bot(commands.Bot):
 
     async def close(self):
         await super().close()
-        logger.info("🛑 Twitch bot closed")
+        logger.info("Twitch bot closed")
 
 async def run_twitch_bot():
     try:
-        print_header("Aqua Prime Twitch Bot Starting")
+        logger.info("Aqua Prime Twitch Bot Starting")
         bot = Bot()
         await bot.start()
-    except ValueError as e:
-        logger.error(f"🚫 Error initializing Twitch bot: {e}")
     except Exception as e:
-        logger.error(f"🚫 Unexpected error running Twitch bot: {e}")
+        logger.error(f"Error running Twitch bot: {e}")
     finally:
-        print_header("Aqua Prime Twitch Bot Shutdown")
+        logger.info("Twitch bot closed")
 
 async def main():
     try:
@@ -125,11 +120,8 @@ async def main():
         twitch_task.cancel()
         await twitch_task  # Ensure the task is awaited after cancellation
     except Exception as e:
-        logger.error(f"🚫 Unexpected error running Twitch bot: {e}")
+        logger.error(f"Unexpected error running Twitch bot: {e}")
 
 if __name__ == "__main__":
-    print(f"\n{COLORS['header']}{'=' * 80}{COLORS['reset']}")
-    print(f"{COLORS['header']}{'Aqua Prime Twitch Bot Starting':^80}{COLORS['reset']}")
-    print(f"{COLORS['header']}{'=' * 80}{COLORS['reset']}\n")
-
+    logger.info("Aqua Prime Twitch Bot Starting")
     asyncio.run(main())
