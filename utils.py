@@ -6,6 +6,7 @@ from shared_utils import logger, log_error
 from database import session_scope, Message
 from sqlalchemy import select
 from datetime import datetime
+import json
 
 @lru_cache(maxsize=100)
 async def cached_generate_response(prompt):
@@ -32,7 +33,9 @@ async def generate_response_with_openai(prompt):
 
 async def process_message_with_context(prompt, user_id, platform, conversation_id):
     context = await get_relevant_context(user_id, platform, conversation_id)
-    full_prompt = f"{context}\n\nUser: {prompt}\n\nAI:"
+    game_state = game_state_manager.load_game_state()  # Fetch the game state
+    full_prompt = f"{context}\n\nGame State: {json.dumps(game_state, indent=2)}\n\nUser: {prompt}\n\nAI:"
+    logger.info(f"Full prompt being sent to OpenAI:\n{full_prompt[:1000]}...")  # Log the first 1000 characters of the prompt
     return await cached_generate_response(full_prompt)
 
 async def save_message(content, platform, user_id, username, is_user=True):
