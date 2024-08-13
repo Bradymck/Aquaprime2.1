@@ -1,10 +1,10 @@
 import logging
-from sqlalchemy import Column, DateTime, Float, Integer, String, JSON, ForeignKey
+from sqlalchemy import Column, DateTime, Float, Integer, String, JSON, ForeignKey, func
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import QueuePool
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from colorama import init, Fore, Style
 import random
 import os
@@ -52,6 +52,25 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database initialized")
 
+async def cleanup_old_messages(days=30):
+    async with session_scope() as session:
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        await session.execute(
+            delete(Message).where(Message.timestamp < cutoff_date)
+        )
+        await session.commit()
+
+async def optimize_database():
+    async with session_scope() as session:
+        await session.execute("VACUUM")
+        await session.execute("ANALYZE")
+
+async def scheduled_database_maintenance():
+    while True:
+        await asyncio.sleep(86400)  # Run daily
+        await cleanup_old_messages()
+        await optimize_database()
+
 class Message(Base):
     __tablename__ = 'messages'
     id = Column(Integer, primary_key=True)
@@ -60,7 +79,7 @@ class Message(Base):
     user_id = Column(String)
     username = Column(String)
     sentiment = Column(Float)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
 
 class UserEngagement(Base):
@@ -76,7 +95,7 @@ class TranscriptSummary(Base):
     __tablename__ = 'transcript_summaries'
     id = Column(Integer, primary_key=True)
     content = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
 class AgentMemory(Base):
     __tablename__ = 'agent_memories'

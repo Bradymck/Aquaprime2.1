@@ -37,7 +37,45 @@ class DiscordBot(commands.Cog):
             logger.error(f"Chat error for user {user_id}: {e}")
             await interaction.response.send_message("An error occurred while processing your request.")
 
+    @discord.app_commands.command(name='help', description='Display available commands')
+    async def help_command(self, interaction: discord.Interaction):
+        commands = [
+            ('chat', 'Chat with the AI'),
+            ('faction_info', 'Get information about your faction'),
+            ('game_status', 'Check the current game status')
+        ]
+        help_text = "\n".join([f"!{cmd}: {desc}" for cmd, desc in commands])
+        await interaction.response.send_message(f"Available commands:\n{help_text}")
+
+    @discord.app_commands.command(name='faction_info', description='Get information about your faction')
+    @handle_errors
+    async def faction_info(self, interaction: discord.Interaction):
+        user_id = str(interaction.user.id)
+        try:
+            faction_info = game_state_manager.get_faction_info(user_id)
+            await interaction.response.send_message(f"Your faction info: {faction_info}")
+        except Exception as e:
+            logger.error(f"Error fetching faction info for user {user_id}: {e}")
+            await interaction.response.send_message("An error occurred while fetching faction information.")
+
+    @discord.app_commands.command(name='game_status', description='Check the current game status')
+    @handle_errors
+    async def game_status(self, interaction: discord.Interaction):
+        try:
+            status = game_state_manager.get_game_status()
+            await interaction.response.send_message(f"Current game status: {status}")
+        except Exception as e:
+            logger.error(f"Error fetching game status: {e}")
+            await interaction.response.send_message("An error occurred while fetching game status.")
+
+async def run_discord_bot():
+    try:
+        await bot.start(os.getenv('DISCORD_TOKEN'))
+    except Exception as e:
+        logger.error(f"Error running Discord bot: {e}")
+    finally:
+        if not bot.is_closed():
+            await bot.close()
+
 async def setup(bot):
     await bot.add_cog(DiscordBot(bot))
-async def run_discord_bot():
-    await bot.start(os.getenv('DISCORD_TOKEN'))

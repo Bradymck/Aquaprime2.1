@@ -1,10 +1,15 @@
-from datetime import datetime, timedelta
-from openai import AsyncOpenAI
-import os
-from database import session_scope, Message, UserEngagement, TranscriptSummary
-from shared_utils import logger, log_info, log_error
+import asyncio
+from functools import lru_cache
+
+@lru_cache(maxsize=100)
+def cached_generate_response(prompt):
+    return asyncio.run(generate_response_with_openai(prompt))
 
 async def generate_response_with_openai(prompt):
+    cached_response = cached_generate_response(prompt)
+    if cached_response:
+        return cached_response
+
     logger.info(f"Prompt being sent to OpenAI: {prompt}")
     client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -18,6 +23,7 @@ async def generate_response_with_openai(prompt):
             frequency_penalty=0.0,
             presence_penalty=0.0
         )
+        cached_generate_response.cache_clear()  # Clear cache periodically to avoid stale responses
         return response.choices[0].message.content.strip()
     except Exception as e:
         log_error(f"Error generating response from OpenAI: {e}")

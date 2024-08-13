@@ -8,6 +8,8 @@ from typing import List, Dict, Any, Optional
 from asynciolimiter import Limiter
 from datetime import datetime
 from shared_utils import logger
+from cachetools import TTLCache
+import time
 
 # Environment variables
 PLAY_AI_API_URL = os.getenv('PLAY_AI_API_URL', 'https://api.play.ai/api/v1')
@@ -18,14 +20,34 @@ AGENT_ID = os.getenv('AGENT_ID')
 # Rate limiter: 10 requests per second
 rate_limiter = Limiter(10 / 1)
 
+# Add these variables at the top of the file
+TOKEN_EXPIRY = None
+TOKEN_CACHE = TTLCache(maxsize=1, ttl=3600)  # Cache token for 1 hour
+
+async def refresh_token():
+    global TOKEN_EXPIRY
+    # Implement token refresh logic here
+    # Update TOKEN_EXPIRY with new expiry time
+    TOKEN_CACHE['token'] = new_token
+    TOKEN_EXPIRY = time.time() + 3600  # Set expiry to 1 hour from now
+
+async def get_valid_token():
+    if 'token' not in TOKEN_CACHE or time.time() > TOKEN_EXPIRY:
+        await refresh_token()
+    return TOKEN_CACHE['token']
+
 async def make_api_request(url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]] = None, max_retries: int = 3) -> Optional[Dict[str, Any]]:
     async with rate_limiter:
         for attempt in range(max_retries):
             try:
+                token = await get_valid_token()
+                headers['Authorization'] = f"Bearer {token}"
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, headers=headers, params=params) as response:
                         if response.status == 200:
                             return await response.json()
+                        elif response.status == 401:  # Unauthorized, token might be expired
+                            await refresh_token()
                         elif response.status == 404:
                             logger.warning(f"Resource not found: {url}")
                             return None

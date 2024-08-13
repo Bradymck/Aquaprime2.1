@@ -14,6 +14,7 @@ from discord_bot import run_discord_bot, bot
 from database import init_db
 from shared_utils import logger, log_info
 from game_state_manager import GameStateManager
+from plugin_manager import PluginManager
 
 # Load environment variables
 load_dotenv()
@@ -80,8 +81,7 @@ async def shutdown(signal, loop):
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
     [task.cancel() for task in tasks]
     log_info(f"Cancelling {len(tasks)} outstanding tasks")
-    await asyncio.gather(*tasks, return_exceptions=True)
-    loop.stop()
+    await async
 
 def signal_handler():
     log_info("Received shutdown signal. Closing bots...")
@@ -93,38 +93,31 @@ def signal_handler():
 async def main():
     log_info("Aqua Prime Bot Starting")
 
-    # Initialize the database
-    await init_db()
-    log_info("Database initialized")
-
-    # Set up signal handling
-    signal_handler()
-
     try:
-        # 🤖 Initialize the game state manager
+        await init_db()
+        log_info("Database initialized")
+
         game_state_manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
-
-        # 🔄 Create a task for scheduled synchronization
         sync_task = asyncio.create_task(game_state_manager.scheduled_sync())
-
-        # Run the Discord bot
         discord_task = asyncio.create_task(run_discord_bot())
+        twitch_task = asyncio.create_task(run_twitch_bot())
 
-        # Run the Twitch bot
-        twitch_task = asyncio.create_task(run_twitch_bot_wrapper())
+        plugin_manager = PluginManager()
+        plugin_manager.load_plugins()
+        await plugin_manager.initialize_plugins(bot)
 
-        # ⏳ Wait for all tasks to complete
         await asyncio.gather(sync_task, discord_task, twitch_task)
     except asyncio.CancelledError:
         logger.info("Main task was cancelled.")
     except Exception as e:
         logger.error(f"An error occurred in the main function: {e}")
     finally:
-        # 🧹 Cleanup: Ensure all tasks are completed before exiting
         await bot.close()
-        for task in asyncio.all_tasks():
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        for task in tasks:
             task.cancel()
-        await asyncio.gather(*asyncio.all_tasks(), return_exceptions=True)
+        await asyncio.gather(*tasks, return_exceptions=True)
+        logger.info("All tasks have been cancelled and cleaned up.")
 
 if __name__ == "__main__":
     asyncio.run(main())

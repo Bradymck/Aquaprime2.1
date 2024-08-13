@@ -48,12 +48,30 @@ class GameStateManager:
                 else:
                     raise Exception(f"Failed to update agent: {await response.text()}")
 
-    def save_game_state(self):
-        with open(self.file_path, 'w') as file:
-            json.dump(self.game_state, file)
+    async def save_game_state(self):
+        try:
+            with open(self.file_path, 'w') as file:
+                json.dump(self.game_state, file)
+            logger.info("Game state saved successfully")
+        except Exception as e:
+            logger.error(f"Error saving game state: {e}")
+
+    async def periodic_save(self):
+        while True:
+            await asyncio.sleep(300)  # Save every 5 minutes
+            await self.save_game_state()
+
+    def clean_old_knowledge(self, max_age_days=30):
+        current_time = datetime.now()
+        old_entries = [key for key, value in self.knowledge_base.items() 
+                       if (current_time - value.get('timestamp', current_time)).days > max_age_days]
+        for key in old_entries:
+            del self.knowledge_base[key]
+        logger.info(f"Cleaned {len(old_entries)} old knowledge entries")
 
     async def scheduled_sync(self):
         try:
+            save_task = asyncio.create_task(self.periodic_save())
             while True:
                 # 🔄 Fetch recent conversations from play.ai
                 conversations = await fetch_recent_conversations()
@@ -66,12 +84,16 @@ class GameStateManager:
                 
                 # 🕐 Wait for 5 minutes before the next sync
                 await asyncio.sleep(300)
+                self.clean_old_knowledge()
         except asyncio.CancelledError:
             # 🛑 Handle cancellation of the sync task
             logger.info("Scheduled sync task was cancelled.")
         except Exception as e:
             # ❗ Log any unexpected errors
             logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
+        finally:
+            save_task.cancel()
+            await save_task
 
     async def store_transcript(self, conversation_id, transcript):
         async with session_scope() as session:
