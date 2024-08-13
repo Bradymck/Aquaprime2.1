@@ -10,12 +10,12 @@ from discord import Intents
 import aiofiles
 import signal
 from twitch_bot import run_twitch_bot
-from discord_bot import run_discord_bot, bot
+from discord_bot import run_discord_bot, bot, DiscordBot  # Added this line
 from database import init_db
 from shared_utils import logger, log_info
 from game_state_manager import GameStateManager
 from plugin_manager import PluginManager
-from config import check_secrets, initialize_openai_client  # Add this line
+from config import check_secrets, initialize_openai_client  # Added this line
 
 # Load environment variables
 load_dotenv()
@@ -99,7 +99,7 @@ async def main():
         game_state_manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
         sync_task = asyncio.create_task(game_state_manager.scheduled_sync())
         discord_task = asyncio.create_task(run_discord_bot())
-        twitch_task = asyncio.create_task(run_twitch_bot())
+        twitch_task = asyncio.create_task(run_twitch_bot_wrapper())
 
         plugin_manager = PluginManager()
         plugin_manager.load_plugins()
@@ -118,16 +118,6 @@ async def main():
         await asyncio.gather(*tasks, return_exceptions=True)
         logger.info("All tasks have been cancelled and cleaned up.")
 
-async def shutdown(signal, loop):
-    log_info(f"Received exit signal {signal.name}...")
-    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-    for task in tasks:
-        task.cancel()
-    log_info(f"Cancelling {len(tasks)} outstanding tasks")
-    await asyncio.gather(*tasks, return_exceptions=True)
-    loop.stop()
-
-
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -137,12 +127,3 @@ if __name__ == "__main__":
     finally:
         loop.close()
         log_info("Successfully shutdown the Aqua Prime bot.")
-
-# Add this function to log commands asynchronously
-async def log_command(command):
-    async with aiofiles.open('game_commands.log', mode='a') as f:
-        await f.write(f"{command}\n")
-
-async def init_discord_bot():
-    await bot.add_cog(DiscordBot(bot))
-    logger.info("Discord bot initialized")
