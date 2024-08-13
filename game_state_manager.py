@@ -67,19 +67,3 @@ def signal_handler():
     for task in asyncio.all_tasks():
         task.cancel()  # Cancel pending tasks
     asyncio.get_event_loop().stop()  # Stop the event loop
-
-async def main():
-    try:
-        await asyncio.gather(discord_task, twitch_task, scheduled_sync())
-    except asyncio.CancelledError:
-        logger.info("Main task was cancelled.")
-    finally:
-        # Ensure all tasks are completed before exiting
-        for task in asyncio.all_tasks():
-            task.cancel()
-        await asyncio.gather(*asyncio.all_tasks(), return_exceptions=True)
-
-# Example usage
-if __name__ == "__main__":
-    manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
-    print(manager.game_state)

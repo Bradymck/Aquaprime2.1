@@ -38,18 +38,32 @@ async def make_api_request(url: str, headers: Dict[str, str], params: Optional[D
         return None
 
 async def fetch_recent_conversations() -> List[Dict[str, Any]]:
+    if not AGENT_ID:
+        logger.error("AGENT_ID is not set")
+        return []
+    
     url = f"{PLAY_AI_API_URL}/agents/{AGENT_ID}/conversations"
     headers = {
         "Authorization": f"Bearer {PLAY_AI_API_KEY}",
         "X-USER-ID": PLAY_AI_USER_ID,
         "Accept": "application/json"
     }
-    params = {"limit": 10}
+    params = {"limit": 50, "offset": 0}  # Adjust limit as needed
 
-    result = await make_api_request(url, headers, params)
-    return result if result else []
+    try:
+        response = await make_api_request(url, headers, params)
+        if response and 'conversations' in response:
+            return response['conversations']
+        return []
+    except Exception as e:
+        logger.error(f"Error fetching recent conversations: {e}")
+        return []
 
 async def fetch_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
+    if not AGENT_ID:
+        logger.error("AGENT_ID is not set")
+        return None
+    
     url = f"{PLAY_AI_API_URL}/agents/{AGENT_ID}/conversations/{conversation_id}"
     headers = {
         "Authorization": f"Bearer {PLAY_AI_API_KEY}",
@@ -60,6 +74,10 @@ async def fetch_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
     return await make_api_request(url, headers)
 
 async def fetch_conversation_transcript(conversation_id: str) -> Optional[List[Dict[str, Any]]]:
+    if not AGENT_ID:
+        logger.error("AGENT_ID is not set")
+        return []
+    
     url = f"{PLAY_AI_API_URL}/agents/{AGENT_ID}/conversations/{conversation_id}/transcript"
     headers = {
         "Authorization": f"Bearer {PLAY_AI_API_KEY}",
@@ -67,57 +85,11 @@ async def fetch_conversation_transcript(conversation_id: str) -> Optional[List[D
         "Accept": "application/json"
     }
 
-    return await make_api_request(url, headers)
-
-
-async def scheduled_sync():
     try:
-        while True:
-            conversations = await fetch_recent_conversations()
-            if not conversations:
-                logger.info("No new conversations to sync.")
-                await asyncio.sleep(300)
-                continue
-
-            new_count = 0
-            update_count = 0
-            message_count = 0
-
-            async with session_scope() as session:
-                for conv in conversations:
-                    try:
-                        existing_conv = await session.execute(select(Conversation).filter_by(conversation_id=conv['id']))
-                        existing_conv = existing_conv.scalar_one_or_none()
-                        if existing_conv is None:
-                            new_conv = Conversation(
-                                conversation_id=conv['id'],
-                                agent_id=AGENT_ID,
-                                start_time=datetime.fromisoformat(conv['startedAt'].replace('Z', '+00:00')),
-                                end_time=datetime.fromisoformat(conv['endedAt'].replace('Z', '+00:00')) if conv['endedAt'] else None,
-                                summary=conv.get('summary', '')
-                            )
-                            session.add(new_conv)
-                            await session.flush()
-                            new_count += 1
-
-                            messages = await fetch_conversation_transcript(conv['id'])
-                            for msg in messages:
-                                if 'content' in msg:
-                                    new_msg = ConversationMessage(
-                                        conversation_id=conv['id'],
-                                        role=msg['role'],
-                                        content=msg['content'],
-                                        timestamp=datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
-                                    )
-                                    session.add(new_msg)
-                                else:
-                                    logger.error(f"Message does not contain 'content': {msg}")
-                            message_count += len(messages)
-                        else:
-                            update_count += 1
-                    except Exception as fetch_error:
-                        logger.error(f"Error processing conversation {conv['id']}: {fetch_error}")
-            logger.info(f"Sync complete. New conversations: {new_count}, Updated: {update_count}, Messages: {message_count}")
-            await asyncio.sleep(300)
+        response = await make_api_request(url, headers)
+        if response and 'messages' in response:
+            return response['messages']
+        return []
     except Exception as e:
-        logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
+        logger.error(f"Error fetching conversation transcript for {conversation_id}: {e}")
+        return []

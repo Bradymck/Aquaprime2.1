@@ -54,8 +54,13 @@ async def generate_response(prompt):
         return "Sorry, I encountered an error."
 
 async def run_discord_bot():
-    from discord_bot import run_discord_bot as discord_run
-    await discord_run()
+    try:
+        await bot.start(os.getenv('DISCORD_TOKEN'))
+    except Exception as e:
+        logger.error(f"Error running Discord bot: {e}")
+    finally:
+        if not bot.is_closed():
+            await bot.close()
 
 async def main():
     log_info("Aqua Prime Bot Starting")
@@ -66,17 +71,27 @@ async def main():
     await init_db()
     log_info("Database initialized")
 
-    # Start the scheduled sync task
-    sync_task = asyncio.create_task(scheduled_sync())
+    try:
+        # Start the scheduled sync task
+        sync_task = asyncio.create_task(scheduled_sync())
 
-    # Run the Discord bot
-    discord_task = asyncio.create_task(run_discord_bot())
+        # Run the Discord bot
+        discord_task = asyncio.create_task(run_discord_bot())
 
-    # Run the Twitch bot
-    twitch_task = asyncio.create_task(run_twitch_bot())
+        # Run the Twitch bot
+        twitch_task = asyncio.create_task(run_twitch_bot())
 
-    # Wait for all tasks to complete
-    await asyncio.gather(sync_task, discord_task, twitch_task)
+        # Wait for all tasks to complete
+        await asyncio.gather(sync_task, discord_task, twitch_task)
+    except asyncio.CancelledError:
+        logger.info("Main task was cancelled.")
+    except Exception as e:
+        logger.error(f"An error occurred in the main function: {e}")
+    finally:
+        # Ensure all tasks are completed before exiting
+        for task in asyncio.all_tasks():
+            task.cancel()
+        await asyncio.gather(*asyncio.all_tasks(), return_exceptions=True)
 
 def signal_handler():
     logger.info("Received shutdown signal. Closing bots...")

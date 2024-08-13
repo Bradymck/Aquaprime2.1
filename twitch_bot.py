@@ -1,6 +1,7 @@
 import subprocess
 import os
 import logging
+import asyncio
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -66,12 +67,15 @@ def sync_commit_and_push():
         logger.error(f"Error during sync, commit, or push: {e}")
 
 async def run_twitch_bot():
-    # Implement the Twitch bot functionality here
-    logger.info("Twitch bot is running")
-    # Add your Twitch bot logic here
-    while True:
-        # Placeholder for Twitch bot main loop
-        await asyncio.sleep(60)  # Sleep for 60 seconds before next iteration
+    try:
+        logger.info("Twitch bot is running")
+        while True:
+            # Add your Twitch bot logic here
+            await asyncio.sleep(60)  # Sleep for 60 seconds before next iteration
+    except asyncio.CancelledError:
+        logger.info("Twitch bot task was cancelled.")
+    except Exception as e:
+        logger.error(f"Error in Twitch bot: {e}")
 
 if __name__ == "__main__":
     logger.info("Starting sync, commit, and push process...")
