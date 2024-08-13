@@ -36,6 +36,18 @@ async def process_message_with_context(prompt, user_id, platform, conversation_i
     full_prompt = f"{context}\n\nUser: {prompt}\n\nAI:"
     return await generate_response_with_openai(full_prompt)
 
+async def save_message(content, platform, user_id, username, is_user=True):
+    async with session_scope() as session:
+        message = Message(
+            content=content,
+            platform=platform,
+            user_id=user_id,
+            username=username,
+            is_user=is_user,
+            timestamp=datetime.utcnow()
+        )
+        session.add(message)
+
 async def get_relevant_context(user_id, platform, conversation_id):
     async with session_scope() as session:
         recent_messages = await session.execute(
@@ -52,14 +64,6 @@ async def get_relevant_context(user_id, platform, conversation_id):
         
         return context
 
-async def save_message(content, platform, user_id, username, is_user=True):
-    async with session_scope() as session:
-        message = Message(
-            content=content,
-            platform=platform,
-            user_id=user_id,
-            username=username,
-            is_user=is_user,
-            timestamp=datetime.utcnow()
-        )
-        session.add(message)
+async def get_relevant_summary(user_id, platform, conversation_id):
+    # Implement summary retrieval logic here
+    return "Relevant summary placeholder"
