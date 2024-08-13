@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from openai import AsyncOpenAI
 import os
 from database import session_scope, Message, UserEngagement, TranscriptSummary
-from shared_utils import logger, log_info, log_error, log_warning
+from shared_utils import logger, log_info
 
 async def generate_response_with_openai(prompt):
     logger.info(f"Prompt being sent to OpenAI: {prompt}")
