@@ -38,32 +38,38 @@ async def make_api_request(url: str, headers: Dict[str, str], params: Optional[D
         return None
 
 async def fetch_recent_conversations() -> List[Dict[str, Any]]:
+    # 🔍 Check if AGENT_ID is set
     if not AGENT_ID:
         logger.error("AGENT_ID is not set")
         return []
     
+    # 🌐 Prepare the API request
     url = f"{PLAY_AI_API_URL}/agents/{AGENT_ID}/conversations"
     headers = {
         "Authorization": f"Bearer {PLAY_AI_API_KEY}",
         "X-USER-ID": PLAY_AI_USER_ID,
         "Accept": "application/json"
     }
-    params = {"limit": 50, "offset": 0}  # Adjust limit as needed
+    params = {"limit": 50, "offset": 0}  # 🔢 Adjust limit as needed
 
     try:
+        # 📡 Make the API request
         response = await make_api_request(url, headers, params)
         if response and 'conversations' in response:
             return response['conversations']
         return []
     except Exception as e:
+        # ❗ Log any errors
         logger.error(f"Error fetching recent conversations: {e}")
         return []
 
 async def fetch_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
+    # 🔍 Check if AGENT_ID is set
     if not AGENT_ID:
         logger.error("AGENT_ID is not set")
         return None
     
+    # 🌐 Prepare the API request
     url = f"{PLAY_AI_API_URL}/agents/{AGENT_ID}/conversations/{conversation_id}"
     headers = {
         "Authorization": f"Bearer {PLAY_AI_API_KEY}",
@@ -74,10 +80,12 @@ async def fetch_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
     return await make_api_request(url, headers)
 
 async def fetch_conversation_transcript(conversation_id: str) -> Optional[List[Dict[str, Any]]]:
+    # 🔍 Check if AGENT_ID is set
     if not AGENT_ID:
         logger.error("AGENT_ID is not set")
         return []
     
+    # 🌐 Prepare the API request
     url = f"{PLAY_AI_API_URL}/agents/{AGENT_ID}/conversations/{conversation_id}/transcript"
     headers = {
         "Authorization": f"Bearer {PLAY_AI_API_KEY}",
@@ -86,10 +94,12 @@ async def fetch_conversation_transcript(conversation_id: str) -> Optional[List[D
     }
 
     try:
+        # 📡 Make the API request
         response = await make_api_request(url, headers)
         if response and 'messages' in response:
             return response['messages']
         return []
     except Exception as e:
+        # ❗ Log any errors
         logger.error(f"Error fetching conversation transcript for {conversation_id}: {e}")
         return []

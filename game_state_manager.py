@@ -55,12 +55,41 @@ class GameStateManager:
     async def scheduled_sync(self):
         try:
             while True:
-                # Your asynchronous task here
-                await asyncio.sleep(300)  # Sleep to prevent tight loops
+                # 🔄 Fetch recent conversations from play.ai
+                conversations = await fetch_recent_conversations()
+                for conv in conversations:
+                    # 📜 Retrieve the transcript for each conversation
+                    transcript = await fetch_conversation_transcript(conv['id'])
+                    if transcript:
+                        # 💾 Store the transcript in the database
+                        await self.store_transcript(conv['id'], transcript)
+                
+                # 🕐 Wait for 5 minutes before the next sync
+                await asyncio.sleep(300)
         except asyncio.CancelledError:
+            # 🛑 Handle cancellation of the sync task
             logger.info("Scheduled sync task was cancelled.")
         except Exception as e:
+            # ❗ Log any unexpected errors
             logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
+
+    async def store_transcript(self, conversation_id, transcript):
+        async with session_scope() as session:
+            for message in transcript:
+                # 📝 Create a new ConversationMessage object for each message in the transcript
+                new_message = ConversationMessage(
+                    conversation_id=conversation_id,
+                    role=message['role'],
+                    content=message['content'],
+                    timestamp=datetime.fromisoformat(message['timestamp'].replace('Z', '+00:00'))
+                )
+                # ➕ Add the new message to the database session
+                session.add(new_message)
+            # ✅ Commit all new messages to the database
+            await session.commit()
+
+    # 🔮 Future enhancement: Implement vector database synchronization
+    # TODO: Add logic to sync with a vector database for improved search and retrieval
 
 def signal_handler():
     logger.info("Received shutdown signal. Closing bots...")

@@ -11,9 +11,10 @@ import aiofiles
 import signal
 from twitch_bot import run_twitch_bot
 from discord_bot import run_discord_bot, bot
-from api_client import scheduled_sync
 from database import init_db
 from shared_utils import logger, log_info
+from game_state_manager import GameStateManager
+
 # Load environment variables
 load_dotenv()
 
@@ -100,8 +101,11 @@ async def main():
     signal_handler()
 
     try:
-        # Start the scheduled sync task
-        sync_task = asyncio.create_task(scheduled_sync())
+        # 🤖 Initialize the game state manager
+        game_state_manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
+
+        # 🔄 Create a task for scheduled synchronization
+        sync_task = asyncio.create_task(game_state_manager.scheduled_sync())
 
         # Run the Discord bot
         discord_task = asyncio.create_task(run_discord_bot())
@@ -109,14 +113,14 @@ async def main():
         # Run the Twitch bot
         twitch_task = asyncio.create_task(run_twitch_bot_wrapper())
 
-        # Wait for all tasks to complete
+        # ⏳ Wait for all tasks to complete
         await asyncio.gather(sync_task, discord_task, twitch_task)
     except asyncio.CancelledError:
         logger.info("Main task was cancelled.")
     except Exception as e:
         logger.error(f"An error occurred in the main function: {e}")
     finally:
-        # Ensure all tasks are completed before exiting
+        # 🧹 Cleanup: Ensure all tasks are completed before exiting
         await bot.close()
         for task in asyncio.all_tasks():
             task.cancel()
