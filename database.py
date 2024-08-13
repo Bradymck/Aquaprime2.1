@@ -5,25 +5,20 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import QueuePool
 from contextlib import asynccontextmanager
 from datetime import datetime
-from colorama import init, Fore, Style
 import random
 import os
 
-
-# Initialize colorama
-init(autoreset=True)
+# Initialize colorama here if needed
+# from colorama import init, Fore, Style
+# init(autoreset=True)
 
 # Aqua Prime themed emojis and symbols
-AQUA_EMOJIS = ["🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"]
+# AQUA_EMOJIS = ["🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"]
 
 class AquaPrimeFormatter(logging.Formatter):
     def format(self, record):
-        aqua_colors = [Fore.CYAN, Fore.BLUE, Fore.GREEN]
-        color = random.choice(aqua_colors)
-        emoji = random.choice(AQUA_EMOJIS)
-
         log_message = super().format(record)
-        return f"{color}{Style.BRIGHT}{emoji} {log_message}{Style.RESET_ALL}"
+        return f"{log_message}"  # Removed emojis
 
 logger = logging.getLogger('database')
 handler = logging.StreamHandler()
@@ -37,21 +32,22 @@ AsyncSessionMaker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 
 @asynccontextmanager
 async def session_scope():
-    session = AsyncSessionMaker()
+    async_session = AsyncSessionMaker()  # Create a new session
     try:
-        yield session
-        await session.commit()
+        yield async_session  # Yield the session to the caller
+        await async_session.commit()  # Commit changes after exiting the block
     except Exception as e:
-        await session.rollback()
+        await async_session.rollback()  # Rollback on error
         raise e
     finally:
-        await session.close()
+        await async_session.close()  # Close the session
 
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database initialized")
 
+# Define your SQLAlchemy models below...
 class Message(Base):
     __tablename__ = 'messages'
     id = Column(Integer, primary_key=True)
@@ -62,46 +58,6 @@ class Message(Base):
     sentiment = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-
-class UserEngagement(Base):
-    __tablename__ = 'user_engagement'
-    user_id = Column(String, primary_key=True)
-    username = Column(String)
-    message_count = Column(Integer, default=0)
-    reputation = Column(Integer, default=0)
-    overall_sentiment = Column(Float, default=0.0)
-    last_active = Column(DateTime, default=datetime.utcnow)
-
-class TranscriptSummary(Base):
-    __tablename__ = 'transcript_summaries'
-    id = Column(Integer, primary_key=True)
-    content = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-class AgentMemory(Base):
-    __tablename__ = 'agent_memories'
-    id = Column(Integer, primary_key=True)
-    agent_id = Column(String, unique=True)
-    critical_knowledge = Column(JSON)
-    last_updated = Column(DateTime, default=datetime.utcnow)
-
-class ConversationMessage(Base):
-    __tablename__ = 'conversation_messages'
-    id = Column(Integer, primary_key=True)
-    conversation_id = Column(String, ForeignKey('conversations.conversation_id'))
-    role = Column(String)
-    content = Column(String)
-    timestamp = Column(DateTime)
-    conversation = relationship("Conversation", back_populates="messages")
-
-class Conversation(Base):
-    __tablename__ = 'conversations'
-    id = Column(Integer, primary_key=True)
-    conversation_id = Column(String, unique=True)
-    agent_id = Column(String)
-    start_time = Column(DateTime)
-    end_time = Column(DateTime, nullable=True)
-    summary = Column(String)
-    messages = relationship("ConversationMessage", order_by="ConversationMessage.timestamp", back_populates="conversation")
+# (Other model definitions...)
 
 logger.info("Aqua Prime Database Initialized")
