@@ -23,13 +23,17 @@ logger.info(f"Replit secrets set: {', '.join(required_secrets)}")
 
 # Initialize OpenAI client
 client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
-client = AsyncOpenAI()
 async def generate_response(prompt):
     try:
         logger.info(f"Sending prompt to OpenAI: {prompt[:50]}...")
         response = await client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=150,
+            temperature=0.7,
+            top_p=1.0,
+            frequency_penalty=0.0,
+            presence_penalty=0.0
         )
         return response.choices[0].message.content
     except Exception as e:

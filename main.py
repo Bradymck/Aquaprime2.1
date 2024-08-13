@@ -10,7 +10,10 @@ from discord import Intents
 import aiofiles
 import signal
 from twitch_bot import run_twitch_bot
-
+from discord_bot import run_discord_bot, bot
+from api_client import scheduled_sync
+from database import init_db
+from shared_utils import logger, log_info
 # Load environment variables
 load_dotenv()
 
@@ -62,14 +65,39 @@ async def run_discord_bot():
         if not bot.is_closed():
             await bot.close()
 
+async def run_twitch_bot_wrapper():
+    try:
+        await run_twitch_bot()
+    except Exception as e:
+        logger.error(f"Error running Twitch bot: {e}")
+    finally:
+        # Add any cleanup code for Twitch bot if necessary
+        pass
+
+async def shutdown(signal, loop):
+    log_info(f"Received exit signal {signal.name}...")
+    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    [task.cancel() for task in tasks]
+    log_info(f"Cancelling {len(tasks)} outstanding tasks")
+    await asyncio.gather(*tasks, return_exceptions=True)
+    loop.stop()
+
+def signal_handler():
+    log_info("Received shutdown signal. Closing bots...")
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.remove_signal_handler(sig)
+        loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(shutdown(s, loop)))
+
 async def main():
     log_info("Aqua Prime Bot Starting")
-
-    from database import init_db
 
     # Initialize the database
     await init_db()
     log_info("Database initialized")
+
+    # Set up signal handling
+    signal_handler()
 
     try:
         # Start the scheduled sync task
@@ -79,7 +107,7 @@ async def main():
         discord_task = asyncio.create_task(run_discord_bot())
 
         # Run the Twitch bot
-        twitch_task = asyncio.create_task(run_twitch_bot())
+        twitch_task = asyncio.create_task(run_twitch_bot_wrapper())
 
         # Wait for all tasks to complete
         await asyncio.gather(sync_task, discord_task, twitch_task)
@@ -89,32 +117,19 @@ async def main():
         logger.error(f"An error occurred in the main function: {e}")
     finally:
         # Ensure all tasks are completed before exiting
+        await bot.close()
         for task in asyncio.all_tasks():
             task.cancel()
         await asyncio.gather(*asyncio.all_tasks(), return_exceptions=True)
 
-def signal_handler():
-    logger.info("Received shutdown signal. Closing bots...")
-    for task in asyncio.all_tasks():
-        task.cancel()  # Cancel pending tasks
-    asyncio.get_event_loop().stop()  # Stop the event loop
-
-
 if __name__ == "__main__":
-    logger.info("Aqua Prime Bot Initializing")
-    loop = asyncio.get_event_loop()
-
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, signal_handler)
-
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        logger.error(f"Error running bots: {e}")
-    finally:
-        logger.info("Aqua Prime Bot Shutdown Complete")
+    asyncio.run(main())
 
 # Add this function to log commands asynchronously
 async def log_command(command):
     async with aiofiles.open('game_commands.log', mode='a') as f:
         await f.write(f"{command}\n")
+
+async def init_discord_bot():
+    await bot.add_cog(DiscordBot(bot))
+    logger.info("Discord bot initialized")

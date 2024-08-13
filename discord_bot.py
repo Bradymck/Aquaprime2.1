@@ -21,20 +21,15 @@ class DiscordBot(commands.Cog):
     @handle_errors
     async def chat(self, interaction: discord.Interaction, *, message: str):
         user_id = str(interaction.user.id)
-        conversation_id = None  # Example: You might track conversation IDs differently
+        conversation_id = f"discord_{interaction.channel_id}"
 
         try:
-            relevant_summary = get_relevant_summary(user_id)
-            summary_context = f"Summary: {relevant_summary}" if relevant_summary else "No summary available."
-
-            prompt = f"{summary_context}\n\nUser: {message}\n\n"
-            ai_response = await process_message_with_context(prompt, user_id, 'discord', conversation_id)
+            ai_response = await process_message_with_context(message, user_id, 'discord', conversation_id)
             response = f"AI: {ai_response}\n"
-            if relevant_summary:
-                response += f"Context: {relevant_summary[:100]}..."
 
             await interaction.response.send_message(response)
-            await save_message(message, 'discord', user_id, interaction.user.name)
+            await save_message(message, 'discord', user_id, interaction.user.name, is_user=True)
+            await save_message(ai_response, 'discord', user_id, 'AI', is_user=False)
 
             game_state_manager.update_agent_knowledge(user_id, {"question": message, "answer": ai_response})
 
@@ -44,6 +39,5 @@ class DiscordBot(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(DiscordBot(bot))
-
 async def run_discord_bot():
     await bot.start(os.getenv('DISCORD_TOKEN'))
