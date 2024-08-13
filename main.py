@@ -69,6 +69,15 @@ async def run_discord_bot():
         if not bot.is_closed():
             await bot.close()
 
+async def shutdown(signal, loop):
+    log_info(f"Received exit signal {signal.name}...")
+    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    for task in tasks:
+        task.cancel()
+    log_info(f"Cancelling {len(tasks)} outstanding tasks")
+    await asyncio.gather(*tasks, return_exceptions=True)
+    loop.stop()
+
 async def run_twitch_bot_wrapper():
     try:
         await run_twitch_bot()
@@ -116,6 +125,7 @@ async def shutdown(signal, loop):
     log_info(f"Cancelling {len(tasks)} outstanding tasks")
     await asyncio.gather(*tasks, return_exceptions=True)
     loop.stop()
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()

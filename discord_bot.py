@@ -74,7 +74,7 @@ async def run_discord_bot():
     try:
         await bot.add_cog(DiscordBot(bot))
         await bot.tree.sync()  # Ensure the commands are synced
-        await bot.start(os.environ['DISCORD_TOKEN'])
+        await bot.start(os.getenv('DISCORD_TOKEN'))
     except Exception as e:
         logger.error(f"Error running Discord bot: {e}")
     finally:
