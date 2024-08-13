@@ -13,8 +13,14 @@ class GameStateManager:
     def load_game_state(self):
         try:
             with open(self.file_path, 'r') as file:
-                return json.load(file)
+                content = file.read().strip()
+                if not content:
+                    return {}
+                return json.loads(content)
         except FileNotFoundError:
+            return {}
+        except json.JSONDecodeError:
+            logger.error(f"Invalid JSON in {self.file_path}")
             return {}
 
     def add_knowledge(self, key, value):
