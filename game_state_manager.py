@@ -50,6 +50,7 @@ class GameStateManager:
 
     async def save_game_state(self):
         try:
+            os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
             with open(self.file_path, 'w') as file:
                 json.dump(self.game_state, file)
             logger.info("Game state saved successfully")

@@ -75,23 +75,10 @@ async def run_twitch_bot_wrapper():
         # Add any cleanup code for Twitch bot if necessary
         pass
 
-async def shutdown(signal, loop):
-    log_info(f"Received exit signal {signal.name}...")
-    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-    [task.cancel() for task in tasks]
-    log_info(f"Cancelling {len(tasks)} outstanding tasks")
-    await asyncio.gather(*tasks, return_exceptions=True)
-    loop.stop()
-
-def signal_handler():
-    log_info("Received shutdown signal. Closing bots...")
-    loop = asyncio.get_running_loop()
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.remove_signal_handler(sig)
-        loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(shutdown(s, loop)))
-
 async def main():
     log_info("Aqua Prime Bot Starting")
+    check_secrets()
+    openai_client = initialize_openai_client()
 
     try:
         await init_db()
@@ -118,6 +105,14 @@ async def main():
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         logger.info("All tasks have been cancelled and cleaned up.")
+
+async def shutdown(signal, loop):
+    log_info(f"Received exit signal {signal.name}...")
+    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    [task.cancel() for task in tasks]
+    log_info(f"Cancelling {len(tasks)} outstanding tasks")
+    await asyncio.gather(*tasks, return_exceptions=True)
+    loop.stop()
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()

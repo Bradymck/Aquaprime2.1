@@ -1,28 +1,23 @@
-import importlib
 import os
+import importlib
 from shared_utils import logger
 
 class PluginManager:
-    def __init__(self, plugin_dir='plugins'):
-        self.plugin_dir = plugin_dir
-        self.plugins = {}
+    def __init__(self):
+        self.plugins = []
 
     def load_plugins(self):
-        for filename in os.listdir(self.plugin_dir):
-            if filename.endswith('.py') and not filename.startswith('__'):
-                plugin_name = filename[:-3]
-                try:
-                    module = importlib.import_module(f'{self.plugin_dir}.{plugin_name}')
-                    if hasattr(module, 'setup'):
-                        self.plugins[plugin_name] = module.setup
-                        logger.info(f"Loaded plugin: {plugin_name}")
-                except Exception as e:
-                    logger.error(f"Error loading plugin {plugin_name}: {e}")
+        plugin_dir = 'plugins'
+        if not os.path.exists(plugin_dir):
+            os.makedirs(plugin_dir)
+        for filename in os.listdir(plugin_dir):
+            if filename.endswith('.py'):
+                module_name = filename[:-3]
+                module = importlib.import_module(f'plugins.{module_name}')
+                self.plugins.append(module)
+                logger.info(f"Loaded plugin: {module_name}")
 
     async def initialize_plugins(self, bot):
-        for plugin_name, setup_func in self.plugins.items():
-            try:
-                await setup_func(bot)
-                logger.info(f"Initialized plugin: {plugin_name}")
-            except Exception as e:
-                logger.error(f"Error initializing plugin {plugin_name}: {e}")
+        for plugin in self.plugins:
+            if hasattr(plugin, 'setup'):
+                await plugin.setup(bot)
