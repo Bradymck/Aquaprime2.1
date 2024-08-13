@@ -10,7 +10,7 @@ from config import initialize_openai_client
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents, application_id=os.getenv('DISCORD_APPLICATION_ID'))
 
 game_state_manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
 openai_client = initialize_openai_client()
@@ -49,6 +49,14 @@ class DiscordBot(commands.Cog):
         help_text = "\n".join([f"!{cmd}: {desc}" for cmd, desc in commands])
         await interaction.response.send_message(f"Available commands:\n{help_text}")
 
+@bot.event
+async def on_ready():
+    try:
+        await bot.tree.sync()
+        logger.info(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    except Exception as e:
+        logger.error(f"Error syncing commands: {e}")
+
 async def run_discord_bot():
     try:
         await bot.add_cog(DiscordBot(bot))
@@ -59,3 +67,30 @@ async def run_discord_bot():
     finally:
         if not bot.is_closed():
             await bot.close()
+
+async def shutdown(signal, loop):
+    log_info(f"Received exit signal {signal.name}...")
+    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    for task in tasks:
+        task.cancel()
+    log_info(f"Cancelling {len(tasks)} outstanding tasks")
+    await asyncio.gather(*tasks, return_exceptions=True)
+    loop.stop()
+
+async def run_twitch_bot_wrapper():
+    try:
+        await run_twitch_bot()
+    except Exception as e:
+        logger.error(f"Error running Twitch bot: {e}")
+    finally:
+        # Add any cleanup code for Twitch bot if necessary
+        pass
+
+async def main():
+    log_info("Aqua Prime Bot Starting")
+    check_secrets()
+    openai_client = initialize_openai_client()
+
+    try:
+        await init_db()
+        log_info("Database initialized")

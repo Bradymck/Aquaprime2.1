@@ -10,12 +10,12 @@ from discord import Intents
 import aiofiles
 import signal
 from twitch_bot import run_twitch_bot
-from discord_bot import run_discord_bot, bot, DiscordBot  # Added this line
+from discord_bot import run_discord_bot, bot, DiscordBot
 from database import init_db
 from shared_utils import logger, log_info
 from game_state_manager import GameStateManager
 from plugin_manager import PluginManager
-from config import check_secrets, initialize_openai_client  # Added this line
+from config import check_secrets, initialize_openai_client
 
 # Load environment variables
 load_dotenv()
@@ -23,7 +23,7 @@ load_dotenv()
 # Set up Discord bot
 intents = Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents, application_id=os.getenv('DISCORD_APPLICATION_ID'))
 
 # List of required Replit secrets
 required_secrets = [
