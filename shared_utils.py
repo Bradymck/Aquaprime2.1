@@ -25,8 +25,9 @@ def log_info(message):
 async def write_to_file(filename, data):
     async with aiofiles.open(filename, mode='w') as f:
         await f.write(data)
-        def log_error(message):
-    logger.error(message)
+
+def log_error(message):
+    logger.error(message)  # Properly indented now
 
 def log_warning(message):
     logger.warning(message)
