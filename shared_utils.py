@@ -21,7 +21,7 @@ COLORS = {
 }
 
 def print_header(message):
-    print(f"{COLORS['header']}=== {message} ==={COLORS['reset']}")
+    print(f"=== {message} ===")
 
 def log_info(message):
     logger.info(f"{COLORS['info']}{message}{COLORS['reset']}")

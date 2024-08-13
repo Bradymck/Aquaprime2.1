@@ -17,7 +17,7 @@ from twitch_bot import run_twitch_bot  # Add this import
 # Initialize colorama
 init(autoreset=True)
 
-# Aqua Prime themed emojis and symbols💧
+# Aqua Prime themed emojis and symbols
 AQUA_EMOJIS = [
     "🌊", "💧", "🐠", "🐳", "🦈", "🐙", "🦀", "🐚", "🏊‍♂️", "🏄‍♂️", "🤿", "🚤"
 ]
@@ -27,11 +27,9 @@ load_dotenv()
 class AquaPrimeFormatter(logging.Formatter):
 
     def format(self, record):
-        aqua_colors = [Fore.CYAN, Fore.BLUE, Fore.GREEN]
-        color = random.choice(aqua_colors)
         emoji = random.choice(AQUA_EMOJIS)
         log_message = super().format(record)
-        return f"{color}{Style.BRIGHT}{emoji} {log_message}{Style.RESET_ALL}"
+        return f"{emoji} {log_message}"
 
 
 # Set up logging
@@ -119,12 +117,7 @@ def signal_handler():
 
 
 if __name__ == "__main__":
-    print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
-    logger.info(
-        f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Initializing{Style.RESET_ALL}"
-    )
-    print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
-
+    logger.info("Aqua Prime Bot Initializing")
     loop = asyncio.get_event_loop()
 
     # Set up signal handlers
@@ -136,11 +129,9 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Error running bots: {e}")
     finally:
-        print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
         logger.info(
             f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Bot Shutdown Complete{Style.RESET_ALL}"
         )
-        print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
 
 # Make sure this is after main to avoid the circular import issue
 intents = Intents.default()  # Define intents

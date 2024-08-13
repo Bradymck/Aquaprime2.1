@@ -104,6 +104,4 @@ class Conversation(Base):
     summary = Column(String)
     messages = relationship("ConversationMessage", order_by="ConversationMessage.timestamp", back_populates="conversation")
 
-print(f"\n{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}")
-logger.info(f"{Fore.YELLOW}{Style.BRIGHT}Aqua Prime Database Initialized{Style.RESET_ALL}")
-print(f"{Fore.CYAN}{Style.BRIGHT}{'🌊' * 40}{Style.RESET_ALL}\n")
+logger.info("Aqua Prime Database Initialized")
