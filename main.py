@@ -35,7 +35,6 @@ missing_secrets = [secret for secret in required_secrets if secret not in os.env
 if missing_secrets:
     logger.error(f"Missing required Replit secrets: {', '.join(missing_secrets)}")
     raise SystemExit(f"Missing required Replit secrets: {', '.join(missing_secrets)}")
-
 logger.info(f"Replit secrets set: {', '.join(required_secrets)}")
 
 # Initialize OpenAI client

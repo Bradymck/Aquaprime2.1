@@ -6,9 +6,6 @@ from api_client import scheduled_sync
 from config import check_secrets, initialize_openai_client
 from shared_utils import logger, log_info
 
-check_secrets()
-client = initialize_openai_client()
-
 # List of required Replit secrets
 required_secrets = [
     'DISCORD_TOKEN', 'DISCORD_GUILD_ID', 'TWITCH_IRC_TOKEN',
@@ -24,8 +21,8 @@ if missing_secrets:
 logger.info(f"Replit secrets set: {', '.join(required_secrets)}")
 
 # Initialize OpenAI client
-client = AsyncOpenAI(api_key=os.environ['OPENAI_API_KEY'])
-client = AsyncOpenAI()
+client = initialize_openai_client()
+
 async def generate_response(prompt):
     try:
         logger.info(f"Sending prompt to OpenAI: {prompt[:50]}...")

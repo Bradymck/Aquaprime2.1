@@ -1,5 +1,8 @@
 import asyncio
 from functools import lru_cache
+from openai import AsyncOpenAI
+import os
+from shared_utils import logger, log_error
 
 @lru_cache(maxsize=100)
 def cached_generate_response(prompt):

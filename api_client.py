@@ -125,3 +125,13 @@ async def fetch_conversation_transcript(conversation_id: str) -> Optional[List[D
         # ❗ Log any errors
         logger.error(f"Error fetching conversation transcript for {conversation_id}: {e}")
         return []
+
+async def scheduled_sync():
+    while True:
+        try:
+            # Add your sync logic here
+            await asyncio.sleep(300)  # Run every 5 minutes
+        except asyncio.CancelledError:
+            logger.info("Scheduled sync task was cancelled.")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred in scheduled_sync: {e}")
