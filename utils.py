@@ -7,13 +7,15 @@ from database import session_scope, Message
 from sqlalchemy import select
 from datetime import datetime
 import json
+from game_state_manager import GameStateManager  # Added this import statement
 
 @lru_cache(maxsize=100)
 async def cached_generate_response(prompt):
     return await generate_response_with_openai(prompt)
 
 async def generate_response_with_openai(prompt):
-    logger.info(f"Prompt being sent to OpenAI: {prompt[:50]}...")
+    cleaned_prompt = prompt.replace('\n', ' ').replace('  ', ' ')
+    logger.info(f"Cleaned prompt being sent to OpenAI: {cleaned_prompt[:1000]}...")  # Log the first 1000 characters of the cleaned prompt
     client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     try:
@@ -33,7 +35,8 @@ async def generate_response_with_openai(prompt):
 
 async def process_message_with_context(prompt, user_id, platform, conversation_id):
     context = await get_relevant_context(user_id, platform, conversation_id)
-    game_state = game_state_manager.load_game_state()  # Fetch the game state
+    game_state_manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
+    game_state = game_state_manager.load_game_state()
     full_prompt = f"{context}\n\nGame State: {json.dumps(game_state, indent=2)}\n\nUser: {prompt}\n\nAI:"
     logger.info(f"Full prompt being sent to OpenAI:\n{full_prompt[:1000]}...")  # Log the first 1000 characters of the prompt
     return await cached_generate_response(full_prompt)

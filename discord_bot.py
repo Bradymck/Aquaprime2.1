@@ -29,50 +29,32 @@ async def on_ready():
 game_state_manager = GameStateManager("./AquaPrimeLORE", "./AquaPrimeLORE/game_state.json")
 openai_client = initialize_openai_client()
 
-class DiscordBot(commands.Cog):
+class ChatCommand(discord.app_commands.Command):
     def __init__(self, bot):
+        super().__init__(name="chat", description="Chat with the AI", callback=self.chat_callback)
         self.bot = bot
 
-    @discord.app_commands.command(name='chat', description='Chat with the AI')
-    @handle_errors
-    async def chat(self, interaction: discord.Interaction, *, message: str):
-        user_id = str(interaction.user.id)
-        conversation_id = f"discord_{interaction.channel_id}"
-
+    async def chat_callback(self, interaction: discord.Interaction, message: str):
+        # Defer the response immediately
+        await interaction.response.defer(thinking=True)
+        
         try:
-            ai_response = await process_message_with_context(message, user_id, 'discord', conversation_id)
-            response = f"AI: {ai_response}\n"
-
-            if not interaction.response.is_done():
-                await interaction.response.send_message(response)
-            else:
-                await interaction.followup.send(response)
-
-            await save_message(message, 'discord', user_id, interaction.user.name, is_user=True)
-            await save_message(ai_response, 'discord', user_id, 'AI', is_user=False)
-
-            game_state_manager.update_agent_knowledge(user_id, {"question": message, "answer": ai_response})
-
+            # Process the message
+            response = await process_message_with_context(message, str(interaction.user.id), "discord", None)
+            
+            # Send the response
+            await interaction.followup.send(response)
         except Exception as e:
-            logger.error(f"Chat error for user {user_id}: {e}")
-            if not interaction.response.is_done():
-                await interaction.response.send_message("An error occurred while processing your request.")
-            else:
-                await interaction.followup.send("An error occurred while processing your request.")
+            # Log the error
+            logger.error(f"Error in chat: {str(e)}")
+            
+            # Send an error message
+            await interaction.followup.send("An error occurred while processing your request. Please try again later.")
 
-    @discord.app_commands.command(name='help', description='Display available commands')
-    async def help_command(self, interaction: discord.Interaction):
-        commands = [
-            ('chat', 'Chat with the AI'),
-            ('faction_info', 'Get information about your faction'),
-            ('game_status', 'Check the current game status')
-        ]
-        help_text = "\n".join([f"!{cmd}: {desc}" for cmd, desc in commands])
-        await interaction.response.send_message(f"Available commands:\n{help_text}")
+bot.tree.add_command(ChatCommand(bot))
 
 async def run_discord_bot():
     try:
-        await bot.add_cog(DiscordBot(bot))
         await bot.start(os.getenv('DISCORD_BOT_TOKEN'))
     except Exception as e:
         logger.error(f"Error running Discord bot: {e}")
